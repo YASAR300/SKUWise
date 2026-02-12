@@ -6,28 +6,41 @@ import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 
 export default function ThemeToggle() {
-    const { theme, setTheme } = useTheme();
+    const { setTheme, resolvedTheme } = useTheme();
     const [mounted, setMounted] = React.useState(false);
 
-    // Avoid hydration mismatch by waiting for mount
     React.useEffect(() => {
         setMounted(true);
     }, []);
 
-    if (!mounted) return <div className="h-9 w-9 rounded-md bg-slate-100 dark:bg-slate-800 animate-pulse" />;
+    if (!mounted) return <div className="h-8 w-14 rounded-full bg-muted animate-pulse" />;
+
+    const isDark = resolvedTheme === "dark";
 
     return (
         <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            onClick={() => setTheme(isDark ? "light" : "dark")}
             className={cn(
-                "relative flex h-9 w-9 items-center justify-center rounded-md border transition-colors",
-                "bg-white border-slate-200 hover:bg-slate-50 text-slate-700",
-                "dark:bg-slate-900 dark:border-slate-800 dark:hover:bg-slate-800 dark:text-slate-300"
+                "relative flex h-8 w-14 items-center rounded-full p-1 transition-all duration-500 ring-1 ring-border shadow-inner",
+                isDark ? "bg-primary/20" : "bg-secondary"
             )}
             aria-label="Toggle theme"
         >
-            <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-            <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            <div className={cn(
+                "flex h-6 w-6 items-center justify-center rounded-full bg-card shadow-xl transition-all duration-500 transform border border-border",
+                isDark ? "translate-x-6 rotate-0" : "translate-x-0 rotate-180"
+            )}>
+                {isDark ? (
+                    <Moon className="h-3.5 w-3.5 text-primary" strokeWidth={3} />
+                ) : (
+                    <Sun className="h-3.5 w-3.5 text-amber-500" strokeWidth={3} />
+                )}
+            </div>
+
+            <div className="absolute inset-0 flex justify-between px-2 items-center pointer-events-none opacity-20 dark:opacity-40">
+                <Sun className="h-3 w-3 text-amber-500" />
+                <Moon className="h-3 w-3 text-primary" />
+            </div>
         </button>
     );
 }
