@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 @theme {
+  --dark-mode: selector(.dark);
   --font-sans: var(--font-inter);
 }
 
@@ -8,9 +9,11 @@
   .custom-scrollbar::-webkit-scrollbar {
     width: 5px;
   }
+
   .custom-scrollbar::-webkit-scrollbar-track {
     background: transparent;
   }
+
   .custom-scrollbar::-webkit-scrollbar-thumb {
     @apply bg-slate-200 dark:bg-slate-800 rounded-full;
   }
