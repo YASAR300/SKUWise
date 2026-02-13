@@ -58,3 +58,71 @@ model ResearchSession {
   createdAt DateTime @default(now())
   prefs     Json?    // User preferences for this session (margins vs growth)
 }
+
+// Chat History & ML Training Models
+
+model Conversation {
+  id           String    @id @default(cuid())
+  title        String    // Auto-generated from first query
+  persona      String    @default("growth") // growth/margin
+  mode         String    @default("quick")  // quick/deep
+  totalQueries Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  messages     Message[]
+
+  @@index([createdAt])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  role           String       // "user" or "assistant"
+  content        String       @db.Text
+  
+  // Query metadata (for user messages)
+  query          String?      @db.Text
+  mode           String?
+  persona        String?
+  
+  // Response metadata (for assistant messages)
+  sources        Json?        // Retrieved sources
+  clarifications Json?        // Suggested refinements
+  
+  // ML Training signals
+  wasHelpful     Boolean?     // User feedback (thumbs up/down)
+  userFeedback   String?      @db.Text // Optional text feedback
+  selectedRefinement String?   // If user clicked a refinement
+  
+  createdAt      DateTime     @default(now())
+  
+  @@index([conversationId])
+  @@index([createdAt])
+}
+
+model TrainingExample {
+  id        String   @id @default(cuid())
+  
+  // Input context
+  query     String   @db.Text
+  context   Json     // Retrieved sources/data
+  persona   String
+  mode      String
+  
+  // Generated output
+  response  String   @db.Text
+  
+  // Quality signals for training
+  wasHelpful Boolean  @default(false)
+  userFeedback String? @db.Text
+  
+  // For continuous learning
+  embedding  Json?    // Query embedding vector
+  createdAt  DateTime @default(now())
+  
+  @@index([wasHelpful])
+  @@index([createdAt])
+  @@index([persona, mode])
+}

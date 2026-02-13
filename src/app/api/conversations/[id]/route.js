@@ -1,0 +1,54 @@
+import { PrismaClient } from "@prisma/client";
+import { NextResponse } from "next/server";
+
+const prisma = new PrismaClient();
+
+// GET /api/conversations/[id] - Get specific conversation with all messages
+export async function GET(request, { params }) {
+    try {
+        const { id } = params;
+
+        const conversation = await prisma.conversation.findUnique({
+            where: { id },
+            include: {
+                messages: {
+                    orderBy: { createdAt: "asc" },
+                },
+            },
+        });
+
+        if (!conversation) {
+            return NextResponse.json(
+                { error: "Conversation not found" },
+                { status: 404 }
+            );
+        }
+
+        return NextResponse.json({ conversation });
+    } catch (error) {
+        console.error("Error fetching conversation:", error);
+        return NextResponse.json(
+            { error: "Failed to fetch conversation" },
+            { status: 500 }
+        );
+    }
+}
+
+// DELETE /api/conversations/[id] - Delete conversation
+export async function DELETE(request, { params }) {
+    try {
+        const { id } = params;
+
+        await prisma.conversation.delete({
+            where: { id },
+        });
+
+        return NextResponse.json({ success: true });
+    } catch (error) {
+        console.error("Error deleting conversation:", error);
+        return NextResponse.json(
+            { error: "Failed to delete conversation" },
+            { status: 500 }
+        );
+    }
+}

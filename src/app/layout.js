@@ -22,6 +22,7 @@ export default function RootLayout({ children }) {
         >
           <div className="relative min-h-screen">
             <div className="aurora-bg" />
+            <div className="grid-bg" />
             <Navbar />
             <main className="pt-24 pb-12 px-6">
               {children}
