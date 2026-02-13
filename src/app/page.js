@@ -1,143 +1,127 @@
-import {
-  ArrowUpRight,
-  ArrowDownRight,
-  ShoppingBag,
-  MessageSquare,
-  AlertCircle,
-  Search,
-  Plus,
-  BrainCircuit
-} from "lucide-react";
+"use client";
 
-const stats = [
-  { label: "Total Revenue", value: "₹24.8L", change: "+12.5%", trendingUp: true, icon: ShoppingBag, color: "text-blue-500", bg: "bg-blue-500/10" },
-  { label: "Active Products", value: "1,248", change: "+3.2%", trendingUp: true, icon: ShoppingBag, color: "text-indigo-500", bg: "bg-indigo-500/10" },
-  { label: "Customer Sentiment", value: "4.2", change: "-0.5%", trendingUp: false, icon: MessageSquare, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-  { label: "Alerts", value: "12", change: "Action Needed", trendingUp: false, icon: AlertCircle, color: "text-rose-500", bg: "bg-rose-500/10" },
-];
+import { motion, AnimatePresence } from "framer-motion";
+import { Search, ArrowRight, Zap, BrainCircuit, TrendingUp } from "lucide-react";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 export default function Home() {
-  return (
-    <div className="p-8 max-w-7xl mx-auto min-h-screen">
-      <header className="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-6">
-        <div>
-          <h1 className="text-4xl font-black text-foreground tracking-tight">E-Commerce Intelligence</h1>
-          <p className="text-muted-foreground text-sm mt-2 font-medium">Analyze, optimize, and grow your digital storefront.</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="relative group">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-            <input
-              type="text"
-              placeholder="Search data points..."
-              className="w-full md:w-72 pl-12 pr-6 py-3 bg-secondary/50 border border-border rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all font-medium placeholder:text-muted-foreground/60"
-            />
-          </div>
-          <button className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-2xl text-sm font-bold hover:shadow-xl hover:shadow-primary/20 transition-all active:scale-95 whitespace-nowrap">
-            <Plus className="h-4 w-4" />
-            Import CSV
-          </button>
-        </div>
-      </header>
+  const [isFocused, setIsFocused] = useState(false);
+  const [query, setQuery] = useState("");
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-        {stats.map((stat, idx) => (
-          <div key={idx} className="bg-card p-6 rounded-[2rem] border border-border shadow-sm hover:shadow-2xl hover:shadow-primary/5 transition-all duration-500 group">
-            <div className="flex items-center justify-between mb-6">
-              <div className={`h-12 w-12 rounded-2xl ${stat.bg} ${stat.color} flex items-center justify-center transition-transform duration-500 group-hover:scale-110`}>
-                <stat.icon className="h-6 w-6" />
-              </div>
-              <div className={`flex items-center gap-1.2 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-wider ${stat.trendingUp
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                  : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
-                }`}>
-                {stat.trendingUp ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                {stat.change}
-              </div>
-            </div>
-            <div>
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{stat.label}</p>
-              <h3 className="text-3xl font-black text-foreground mt-2 tracking-tight group-hover:text-primary transition-colors">{stat.value}</h3>
-            </div>
-          </div>
-        ))}
+  const suggestedQueries = [
+    "Analyze Q4 margin leakage",
+    "Compare SKUs with Competitor X",
+    "Identify high-risk inventory",
+  ];
+
+  return (
+    <div className="relative min-h-[90vh] flex flex-col items-center justify-center max-w-5xl mx-auto overflow-hidden px-4">
+      {/* Background Decorative Elements */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] pointer-events-none opacity-20">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+          className="w-full h-full border-[0.5px] border-dashed border-primary/30 rounded-full"
+        />
+        <motion.div
+          animate={{ rotate: -360 }}
+          transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
+          className="absolute top-1/4 left-1/4 w-1/2 h-1/2 border-[0.5px] border-dashed border-primary/20 rounded-full"
+        />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        <div className="lg:col-span-2 bg-card rounded-[2.5rem] border border-border shadow-sm p-10">
-          <div className="flex items-center justify-between mb-10">
-            <div>
-              <h3 className="text-2xl font-black text-foreground">Recent AI Insights</h3>
-              <p className="text-sm text-muted-foreground mt-1">Targeted actions based on recent data ingestion.</p>
-            </div>
-            <button className="text-xs font-black uppercase tracking-widest text-primary hover:underline hover:translate-x-1 transition-all">View Analytics →</button>
-          </div>
+      {/* Main AI Interaction Area */}
+      <div className="relative z-10 w-full flex flex-col items-center gap-12">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center space-y-4"
+        >
+          <p className="text-[10px] font-black uppercase tracking-[0.5em] text-primary">Strategic Intelligence Engine</p>
+          <h1 className="text-4xl md:text-6xl font-normal tracking-[-0.04em] leading-tight">
+            How shall we <span className="font-serif italic">advance</span> today?
+          </h1>
+        </motion.div>
 
-          <div className="space-y-6">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="group p-6 rounded-[2rem] border border-border bg-secondary/30 hover:bg-card hover:border-primary/30 hover:shadow-2xl hover:shadow-primary/5 transition-all cursor-pointer">
-                <div className="flex items-start gap-6">
-                  <div className="h-12 w-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 flex-shrink-0 group-hover:rotate-12 transition-transform">
-                    <AlertCircle className="h-6 w-6" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-lg font-black text-foreground group-hover:text-primary transition-colors">
-                        Profitability Alert: Noise Smartwatch X
-                      </h4>
-                      <span className="text-[10px] font-black text-muted-foreground/40 uppercase tracking-[0.2em] whitespace-nowrap">
-                        12:45 PM
-                      </span>
-                    </div>
-                    <p className="text-sm text-muted-foreground leading-relaxed mb-6 font-medium">
-                      Conversion rates dropping due to competitive pressure in the sub-2k segment. Recommend dynamic repricing or adding "Limited Edition" tags.
-                    </p>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 px-3 py-1 bg-amber-500/10 rounded-lg uppercase tracking-widest">
-                        High Priority
-                      </span>
-                      <span className="text-[9px] font-black text-muted-foreground/60 px-3 py-1 bg-secondary rounded-lg uppercase tracking-widest border border-border/50">
-                        Margin Analysis
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+        <motion.div
+          layout
+          className={cn(
+            "w-full max-w-2xl transition-all duration-500 rounded-px p-px",
+            isFocused ? "bg-gradient-to-r from-primary/50 via-purple-500/50 to-primary/50" : "bg-border"
+          )}
+        >
+          <div className="bg-background w-full rounded-px flex items-center px-6 py-4">
+            <Search className={cn("h-5 w-5 transition-colors", isFocused ? "text-primary" : "text-muted-foreground")} />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              placeholder="Query the void..."
+              className="flex-1 bg-transparent border-none px-4 py-3 text-lg focus:outline-none placeholder:text-muted-foreground/30 placeholder:italic font-light"
+            />
+            <button className={cn(
+              "p-3 rounded-full transition-all active:scale-90",
+              query ? "bg-primary text-white scale-100" : "bg-secondary text-muted-foreground scale-90 opacity-40"
+            )}>
+              <ArrowRight className="h-5 w-5" />
+            </button>
+          </div>
+        </motion.div>
+
+        <AnimatePresence>
+          {!isFocused && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex flex-wrap justify-center gap-3 px-8"
+            >
+              {suggestedQueries.map((q) => (
+                <button
+                  key={q}
+                  onClick={() => setQuery(q)}
+                  className="px-6 py-2.5 text-[10px] font-black uppercase tracking-widest border border-border/50 rounded-full hover:bg-primary/5 hover:border-primary/20 hover:text-primary transition-all text-muted-foreground"
+                >
+                  {q}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Floating Mode HUD (Minimalist) */}
+      <div className="fixed bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-10 px-10 py-4 glass border border-border rounded-full">
+        <div className="flex items-center gap-3 group cursor-pointer">
+          <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
+            <BrainCircuit className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Mode</p>
+            <p className="text-[11px] font-bold">Deep Research</p>
           </div>
         </div>
-
-        <div className="bg-card rounded-[2.5rem] border border-border shadow-sm p-10 overflow-hidden flex flex-col">
-          <div className="mb-10">
-            <h3 className="text-2xl font-black text-foreground">Growth Agent</h3>
-            <p className="text-sm text-muted-foreground mt-1">Your personal strategist.</p>
+        <div className="h-6 w-px bg-border" />
+        <div className="flex items-center gap-3 group cursor-pointer">
+          <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-secondary text-muted-foreground group-hover:bg-emerald-500 group-hover:text-white transition-all shadow-sm">
+            <Zap className="h-5 w-5" />
           </div>
-
-          <div className="bg-primary rounded-[2rem] p-8 text-primary-foreground relative overflow-hidden flex-1 min-h-[450px] shadow-2xl shadow-primary/30">
-            <div className="relative z-10 h-full flex flex-col">
-              <div className="h-14 w-14 rounded-2xl bg-white/15 backdrop-blur-xl flex items-center justify-center mb-8 shadow-2xl border border-white/20">
-                <BrainCircuit className="h-8 w-8 text-white" />
-              </div>
-              <p className="text-[10px] font-black mb-2 text-primary-foreground/70 uppercase tracking-[0.3em]">AI Cognitive Engine</p>
-              <h4 className="text-3xl font-black mb-8 leading-[1.2] tracking-tight">How can I help you scale today?</h4>
-
-              <div className="space-y-3 mt-auto">
-                <p className="text-[10px] font-black text-primary-foreground/50 uppercase tracking-[0.2em] mb-4">Prompt Templates</p>
-                <div className="text-xs bg-white/5 hover:bg-white/10 backdrop-blur-sm p-5 rounded-2xl border border-white/10 cursor-pointer transition-all hover:-translate-y-1 hover:shadow-xl group">
-                  <span className="font-bold opacity-80 group-hover:opacity-100 transition-opacity">"Analyze category margin leakages"</span>
-                </div>
-                <div className="text-xs bg-white/5 hover:bg-white/10 backdrop-blur-sm p-5 rounded-2xl border border-white/10 cursor-pointer transition-all hover:-translate-y-1 hover:shadow-xl group">
-                  <span className="font-bold opacity-80 group-hover:opacity-100 transition-opacity">"Competitor gap analysis report"</span>
-                </div>
-                <div className="text-xs bg-white/5 hover:bg-white/10 backdrop-blur-sm p-5 rounded-2xl border border-white/10 cursor-pointer transition-all hover:-translate-y-1 hover:shadow-xl group">
-                  <span className="font-bold opacity-80 group-hover:opacity-100 transition-opacity">"Predict Q4 sales growth"</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Abstract Background Design */}
-            <div className="absolute top-0 right-0 h-64 w-64 bg-white/10 rounded-full -mr-32 -mt-32 blur-[80px]"></div>
-            <div className="absolute bottom-0 left-0 h-48 w-48 bg-black/10 rounded-full -ml-24 -mb-24 blur-[60px]"></div>
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Persona</p>
+            <p className="text-[11px] font-bold">Growth Optimizer</p>
+          </div>
+        </div>
+        <div className="h-6 w-px bg-border" />
+        <div className="flex items-center gap-3 group cursor-pointer">
+          <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-secondary text-muted-foreground group-hover:bg-indigo-500 group-hover:text-white transition-all shadow-sm">
+            <TrendingUp className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Target</p>
+            <p className="text-[11px] font-bold">Market Share</p>
           </div>
         </div>
       </div>

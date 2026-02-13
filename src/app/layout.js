@@ -1,13 +1,13 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar";
+import Navbar from "@/components/Navbar";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "SKUWise | AI E-Commerce Intelligence",
-  description: "Advanced AI-driven category analysis and growth strategist.",
+  title: "SKUWise | AI Command Center",
+  description: "Advanced AI-driven e-commerce strategy hub.",
 };
 
 export default function RootLayout({ children }) {
@@ -18,11 +18,12 @@ export default function RootLayout({ children }) {
           attribute="class"
           defaultTheme="system"
           enableSystem={true}
-          storageKey="sku-wise-theme-v2"
+          storageKey="sku-wise-v3"
         >
-          <div className="flex h-screen w-full overflow-hidden bg-background text-foreground selection:bg-primary/20 selection:text-primary">
-            <Sidebar />
-            <main className="flex-1 overflow-y-auto">
+          <div className="relative min-h-screen">
+            <div className="aurora-bg" />
+            <Navbar />
+            <main className="pt-24 pb-12 px-6">
               {children}
             </main>
           </div>
