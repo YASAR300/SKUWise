@@ -22,6 +22,7 @@ export default function Home() {
   const [query, setQuery] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState(null);
+  const [mode, setMode] = useState("quick"); // 'quick' or 'deep'
 
   const suggestedQueries = [
     "Analyze Q4 margin leakage",
@@ -40,7 +41,7 @@ export default function Home() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query, mode }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -160,10 +161,18 @@ export default function Home() {
                   New Analysis
                 </button>
                 <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                    <BrainCircuit className="h-4 w-4" />
+                  <div className={cn(
+                    "h-8 w-8 rounded-lg flex items-center justify-center transition-colors",
+                    mode === "deep" ? "bg-indigo-500/10 text-indigo-500" : "bg-primary/10 text-primary"
+                  )}>
+                    {mode === "deep" ? <Layers className="h-4 w-4" /> : <BrainCircuit className="h-4 w-4" />}
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-primary">Intelligence Output</span>
+                  <span className={cn(
+                    "text-[10px] font-black uppercase tracking-widest",
+                    mode === "deep" ? "text-indigo-500" : "text-primary"
+                  )}>
+                    {mode === "deep" ? "Deep Macro Synthesis" : "Intelligence Output"}
+                  </span>
                 </div>
               </header>
 
@@ -210,15 +219,23 @@ export default function Home() {
 
       {/* Floating Mode HUD (Minimalist) */}
       <div className="fixed bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-10 px-10 py-4 glass border border-border rounded-full z-50">
-        <div className="flex items-center gap-3 group cursor-pointer">
-          <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
-            <BrainCircuit className="h-5 w-5" />
+        <button
+          onClick={() => setMode(mode === "quick" ? "deep" : "quick")}
+          className="flex items-center gap-3 group"
+        >
+          <div className={cn(
+            "h-10 w-10 flex items-center justify-center rounded-xl transition-all shadow-sm",
+            mode === "deep" ? "bg-indigo-500 text-white" : "bg-primary/10 text-primary group-hover:bg-primary group-hover:text-white"
+          )}>
+            {mode === "deep" ? <Layers className="h-5 w-5" /> : <BrainCircuit className="h-5 w-5" />}
           </div>
-          <div>
+          <div className="text-left">
             <p className="text-[9px] font-black uppercase tracking-widest opacity-40">Mode</p>
-            <p className="text-[11px] font-bold text-foreground">Deep Research</p>
+            <p className="text-[11px] font-bold text-foreground">
+              {mode === "deep" ? "Deep Research" : "Quick Analysis"}
+            </p>
           </div>
-        </div>
+        </button>
         <div className="h-6 w-px bg-border" />
         <div className="flex items-center gap-3 group cursor-pointer">
           <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-secondary text-muted-foreground group-hover:bg-emerald-500 group-hover:text-white transition-all shadow-sm">

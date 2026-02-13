@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { getContext } from "@/lib/search-utils";
+import { getContext, getDeepContext } from "@/lib/search-utils";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
@@ -13,14 +13,43 @@ export async function POST(request) {
             return NextResponse.json({ error: "Query is required" }, { status: 400 });
         }
 
-        // 1. Get Context from Qdrant
-        const contextResults = await getContext(query);
-        const contextString = contextResults
-            .map(r => `[Source: ${r.collection}] ${r.content}`)
-            .join("\n\n");
+        // 1. Get Context from Qdrant based on mode
+        let contextString = "";
+        let contextResults = [];
+
+        if (mode === "deep") {
+            const deep = await getDeepContext(query);
+            contextString = deep.contextString;
+            contextResults = deep.rawResults;
+        } else {
+            contextResults = await getContext(query);
+            contextString = contextResults
+                .map(r => `[Source: ${r.collection}] ${r.content}`)
+                .join("\n\n");
+        }
 
         // 2. Build Prompt
-        const systemPrompt = `
+        const systemPrompt = mode === "deep" ? `
+      You are the SKUWise Deep Macro Strategist. 
+      Your task is MULTI-SOURCE SYNTHESIS. 
+      You MUST correlate Sales Data with Customer Sentiment and Product Specs.
+      
+      Look for:
+      - Correlated failures (e.g., Good reviews but low sales -> marketing issue)
+      - Pricing elasticity (e.g., Higher price SKU getting better reviews -> premium pivot)
+      - Margin leaks (e.g., High units sold but low revenue/margin per unit)
+      
+      SYNTHESIZED DATA PROFILES:
+      ${contextString || "No clustered data found."}
+      
+      RESEARCH OBJECTIVE:
+      ${query}
+      
+      STRUCTURE:
+      1. Executive Summary
+      2. Cross-Data Correlations (Reviews vs Sales vs Specs)
+      3. Strategic Deployment Steps
+    ` : `
       You are SKUWise AI, a elite e-commerce strategic analyst.
       Your goal is to provide deep, actionable insights based on the provided data context.
       
