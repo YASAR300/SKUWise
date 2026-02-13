@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma"; // Assuming this exists or needs to be created
+import { prisma } from "@/lib/prisma";
+import qdrantClient from "@/lib/qdrant";
 import { parseFile, normalizeData } from "@/lib/data-parser";
+import { getEmbedding, createContentString } from "@/lib/embeddings";
 
 export async function POST(request) {
     try {
@@ -21,8 +22,8 @@ export async function POST(request) {
 
             if (type === "product") {
                 for (const item of normalizedData) {
-                    await prisma.product.upsert({
-                        where: { id: item.id || "non-existent-cuid" }, // Or search by name
+                    const product = await prisma.product.upsert({
+                        where: { id: item.id || "non-existent-cuid" },
                         create: {
                             name: item.name,
                             category: item.category,
@@ -37,6 +38,22 @@ export async function POST(request) {
                             stock: item.stock,
                         },
                     });
+
+                    // Store in Qdrant
+                    const content = createContentString(item, "product");
+                    const vector = await getEmbedding(content);
+
+                    await qdrantClient.upsert("products", {
+                        wait: true,
+                        points: [
+                            {
+                                id: product.id,
+                                vector: vector,
+                                payload: { ...item, type: "product", content }
+                            }
+                        ]
+                    });
+
                     totalSaved++;
                 }
             }
@@ -49,7 +66,7 @@ export async function POST(request) {
                     });
 
                     if (product) {
-                        await prisma.review.create({
+                        const review = await prisma.review.create({
                             data: {
                                 productId: product.id,
                                 rating: item.rating,
@@ -57,6 +74,22 @@ export async function POST(request) {
                                 date: item.date,
                             }
                         });
+
+                        // Store in Qdrant
+                        const content = createContentString(item, "review");
+                        const vector = await getEmbedding(content);
+
+                        await qdrantClient.upsert("reviews", {
+                            wait: true,
+                            points: [
+                                {
+                                    id: review.id,
+                                    vector: vector,
+                                    payload: { ...item, productId: product.id, type: "review", content }
+                                }
+                            ]
+                        });
+
                         totalSaved++;
                     }
                 }
@@ -69,7 +102,7 @@ export async function POST(request) {
                     });
 
                     if (product) {
-                        await prisma.salesData.create({
+                        const sale = await prisma.salesData.create({
                             data: {
                                 productId: product.id,
                                 unitsSold: item.unitsSold,
@@ -77,6 +110,22 @@ export async function POST(request) {
                                 date: item.date,
                             }
                         });
+
+                        // Store in Qdrant
+                        const content = createContentString(item, "sales");
+                        const vector = await getEmbedding(content);
+
+                        await qdrantClient.upsert("sales", {
+                            wait: true,
+                            points: [
+                                {
+                                    id: sale.id,
+                                    vector: vector,
+                                    payload: { ...item, productId: product.id, type: "sales", content }
+                                }
+                            ]
+                        });
+
                         totalSaved++;
                     }
                 }
