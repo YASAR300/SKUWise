@@ -208,9 +208,9 @@ graph LR
     end
     
     subgraph Backend
-        F[API Routes] --> G[/api/chat]
-        F --> H[/api/conversations]
-        F --> I[/api/feedback]
+        F[API Routes] --> G["API Chat"]
+        F --> H["API Conversations"]
+        F --> I["API Feedback"]
     end
     
     subgraph Data Layer
