@@ -22,13 +22,15 @@
 
 ## 👥 TEAM MEMBERS
 
-| ID | Name            | Role                | Responsibilities |
-|----|-----------------|---------------------|------------------|
-| 01 | **Yasar Khan** | **Team Leader & Full Stack Developer** | Architecture, AI Integration, Backend Development |
-| 02 | Team Member 2   | Full Stack Developer | Frontend Development, UI/UX Design |
-| 03 | Team Member 3   | Backend Developer | Database Design, API Development |
+| ID | Name              | Role                                  | Responsibilities                                      |
+|----|-------------------|----------------------------------------|------------------------------------------------------|
+| 01 | **Yasar Khan**    | **Team Leader & Full Stack Developer** | Architecture, AI Integration, Backend Development    |
+| 02 | **Ridham Patel**  | **Full Stack Developer**               | Frontend Development, UI/UX Design                   |
+| 03 | **Rijans Patoliya** | **Backend Developer**                | Database Design, API Development                     |
+| 04 | **Aditya Raulji** | **Frontend Developer**                 | Frontend Development, UI Design, Client-side Logic   |
 
 ---
+
 
 ## 📖 Table of Contents
 
