@@ -78,8 +78,10 @@ async function main() {
                 name: p.title,
                 category: p.category,
                 price: p.price,
+                cost: p.price * 0.7, // Simulated cost
                 rating: p.rating,
                 stock: p.stock,
+                reorderPoint: Math.floor(Math.random() * 41) + 10, // 10-50
             }
         });
         createdProducts.push(dbP);
