@@ -72,7 +72,12 @@ async function main() {
     for (const p of products) {
         const dbP = await prisma.product.upsert({
             where: { id: `dj_${p.id}` },
-            update: {},
+            update: {
+                price: p.price,
+                cost: p.price * 0.7,
+                stock: p.stock,
+                reorderPoint: Math.floor(Math.random() * 41) + 10,
+            },
             create: {
                 id: `dj_${p.id}`,
                 name: p.title,

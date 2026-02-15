@@ -21,7 +21,7 @@ export async function generateInventoryReport(filters = {}) {
 
         // Calculate metrics
         const totalProducts = products.length;
-        const totalStockValue = products.reduce((sum, p) => sum + (p.stock * p.cost), 0);
+        const totalStockValue = products.reduce((sum, p) => sum + (p.stock * (p.cost || 0)), 0);
         const lowStockItems = products.filter(p => p.reorderPoint && p.stock <= p.reorderPoint);
         const outOfStock = products.filter(p => p.stock === 0);
         const overstock = products.filter(p => p.stock > (p.reorderPoint || 0) * 3);
@@ -31,7 +31,7 @@ export async function generateInventoryReport(filters = {}) {
             const cat = p.category || "Uncategorized";
             if (!acc[cat]) acc[cat] = { count: 0, stockValue: 0, items: [] };
             acc[cat].count++;
-            acc[cat].stockValue += p.stock * p.cost;
+            acc[cat].stockValue += p.stock * (p.cost || 0);
             acc[cat].items.push(p);
             return acc;
         }, {});
@@ -76,14 +76,22 @@ export async function generateMarginReport(filters = {}) {
         const products = await prisma.product.findMany({ where });
 
         // Calculate margins
-        const productsWithMargin = products.map(p => ({
-            ...p,
-            margin: p.price - p.cost,
-            marginPercent: ((p.price - p.cost) / p.price) * 100,
-            totalRevenue: p.price * p.stock,
-            totalCost: p.cost * p.stock,
-            totalProfit: (p.price - p.cost) * p.stock,
-        }));
+        const productsWithMargin = products.map(p => {
+            const price = p.price || 0;
+            const cost = p.cost || 0;
+            const margin = price - cost;
+            const marginPercent = price > 0 ? (margin / price) * 100 : 0;
+            const stock = p.stock || 0;
+
+            return {
+                ...p,
+                margin,
+                marginPercent,
+                totalRevenue: price * stock,
+                totalCost: cost * stock,
+                totalProfit: margin * stock,
+            };
+        });
 
         const totalRevenue = productsWithMargin.reduce((sum, p) => sum + p.totalRevenue, 0);
         const totalCost = productsWithMargin.reduce((sum, p) => sum + p.totalCost, 0);
@@ -132,11 +140,16 @@ export async function generateSalesReport(filters = {}) {
         const products = await prisma.product.findMany({ where });
 
         // Calculate sales metrics
-        const productsWithSales = products.map(p => ({
-            ...p,
-            revenue: p.price * p.stock,
-            profit: (p.price - p.cost) * p.stock,
-        }));
+        const productsWithSales = products.map(p => {
+            const price = p.price || 0;
+            const cost = p.cost || 0;
+            const stock = p.stock || 0;
+            return {
+                ...p,
+                revenue: price * stock,
+                profit: (price - cost) * stock,
+            };
+        });
 
         const totalRevenue = productsWithSales.reduce((sum, p) => sum + p.revenue, 0);
         const totalProfit = productsWithSales.reduce((sum, p) => sum + p.profit, 0);
