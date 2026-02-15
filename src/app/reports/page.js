@@ -3,90 +3,117 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    FileText,
-    Download,
+    LayoutDashboard,
     TrendingUp,
     Package,
     DollarSign,
     BarChart3,
-    Loader2,
+    RefreshCw,
+    Download,
+    FileType,
     FileDown,
     FileSpreadsheet,
-    FileType,
-    Calendar,
-    Filter,
-    ArrowUpRight,
-    ArrowDownRight,
-    ShieldCheck,
-    AlertTriangle,
-    LayoutDashboard,
-    PieChart,
     ChevronRight,
     Search,
-    RefreshCw
+    AlertCircle,
+    ArrowUpRight,
+    ArrowDownRight,
+    Shield,
+    PieChart,
+    Activity,
+    Layers,
+    ExternalLink,
+    Zap
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const REPORT_TYPES = [
+const REPORT_CATEGORIES = [
     {
         id: "inventory",
-        title: "Inventory Health",
-        description: "Stock levels, valuation, and reorder alerts",
+        title: "Inventory Intelligence",
+        subtitle: "Stock Health & Valuation",
         icon: Package,
-        color: "from-blue-500/20 to-indigo-500/20",
-        iconColor: "text-blue-500",
-        borderColor: "hover:border-blue-500/50",
+        color: "zinc",
+        accent: "text-blue-400",
+        bg: "bg-blue-400/5",
+        border: "group-hover:border-blue-500/30",
     },
     {
         id: "margin",
-        title: "Margin Analysis",
-        description: "Profitability, costs, and pricing efficiency",
+        title: "Margin Strategic",
+        subtitle: "Profitability & Cost Analysis",
         icon: DollarSign,
-        color: "from-emerald-500/20 to-teal-500/20",
-        iconColor: "text-emerald-500",
-        borderColor: "hover:border-emerald-500/50",
+        color: "zinc",
+        accent: "text-emerald-400",
+        bg: "bg-emerald-400/5",
+        border: "group-hover:border-emerald-500/30",
     },
     {
         id: "sales",
-        title: "Sales Performance",
-        description: "Revenue trends and top-performing products",
+        title: "Revenue Dynamics",
+        subtitle: "Growth & Performance Trends",
         icon: TrendingUp,
-        color: "from-violet-500/20 to-purple-500/20",
-        iconColor: "text-violet-500",
-        borderColor: "hover:border-violet-500/50",
+        color: "zinc",
+        accent: "text-indigo-400",
+        bg: "bg-indigo-400/5",
+        border: "group-hover:border-indigo-500/30",
     },
     {
         id: "competitive",
-        title: "Market Insights",
-        description: "Competitive gaps and category benchmarking",
+        title: "Market Edge",
+        subtitle: "Benchmarking & Gaps",
         icon: BarChart3,
-        color: "from-amber-500/20 to-orange-500/20",
-        iconColor: "text-amber-500",
-        borderColor: "hover:border-amber-500/50",
+        color: "zinc",
+        accent: "text-amber-400",
+        bg: "bg-amber-400/5",
+        border: "group-hover:border-amber-500/30",
     },
 ];
+
+const SafeMetric = ({ label, value, prefix = "", suffix = "", isCurrency = false }) => {
+    const formattedValue = (val) => {
+        if (val === null || val === undefined) return "—";
+        if (typeof val === "number") {
+            if (isCurrency) {
+                return new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: 'USD',
+                    maximumFractionDigits: 0
+                }).format(val);
+            }
+            return val.toLocaleString();
+        }
+        return val;
+    };
+
+    return (
+        <div className="flex flex-col">
+            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em] mb-1">{label}</span>
+            <span className="text-2xl font-black text-white tracking-tight">
+                {prefix}{formattedValue(value)}{suffix}
+            </span>
+        </div>
+    );
+};
 
 export default function ReportsPage() {
     const [selectedType, setSelectedType] = useState(null);
     const [isGenerating, setIsGenerating] = useState(false);
     const [reportData, setReportData] = useState(null);
-    const [activeTab, setActiveTab] = useState("summary");
-    const [hoveredType, setHoveredType] = useState(null);
+    const [activeTab, setActiveTab] = useState("overview");
+    const [error, setError] = useState(null);
 
     async function handleGenerateReport(type) {
         setSelectedType(type);
         setIsGenerating(true);
         setReportData(null);
+        setError(null);
 
         try {
             const res = await fetch("/api/reports", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    type,
-                    format: "json",
-                    filters: {},
-                }),
+                body: JSON.stringify({ type, format: "json", filters: {} }),
             });
 
             const data = await res.json();
@@ -94,10 +121,11 @@ export default function ReportsPage() {
             if (res.ok) {
                 setReportData(data.report);
             } else {
-                throw new Error(data.error);
+                throw new Error(data.error || "Generation failed");
             }
         } catch (error) {
-            console.error("Failed to generate report:", error);
+            console.error("Report error:", error);
+            setError(error.message);
         } finally {
             setIsGenerating(false);
         }
@@ -105,16 +133,11 @@ export default function ReportsPage() {
 
     async function handleExport(format) {
         if (!selectedType) return;
-
         try {
             const res = await fetch("/api/reports", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    type: selectedType,
-                    format,
-                    filters: {},
-                }),
+                body: JSON.stringify({ type: selectedType, format, filters: {} }),
             });
 
             if (res.ok) {
@@ -122,133 +145,91 @@ export default function ReportsPage() {
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement("a");
                 a.href = url;
-                a.download = `${selectedType}-report-${Date.now()}.${format === "excel" ? "xlsx" : format}`;
+                a.download = `${selectedType}-intel-${Date.now()}.${format === "excel" ? "xlsx" : format}`;
                 document.body.appendChild(a);
                 a.click();
-                window.URL.revokeObjectURL(url);
                 document.body.removeChild(a);
             }
-        } catch (error) {
-            console.error("Failed to export report:", error);
-        }
+        } catch (e) { console.error("Export error:", e); }
     }
 
-    const formatCurrency = (val) => {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            maximumFractionDigits: 0
-        }).format(val);
-    };
-
     return (
-        <div className="min-h-screen bg-[#020617] text-slate-200">
-            {/* Ambient Background */}
-            <div className="fixed inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-500/10 blur-[120px] rounded-full" />
-                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 blur-[120px] rounded-full" />
+        <div className="min-h-screen bg-[#09090b] text-zinc-300 font-sans selection:bg-white/10">
+            {/* Elite Grid Background */}
+            <div className="fixed inset-0 pointer-events-none opacity-20">
+                <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+                <div className="absolute inset-0 bg-radial-gradient from-white/5 to-transparent blur-3xl opacity-50"></div>
             </div>
 
-            <div className="relative z-10 max-w-7xl mx-auto px-6 pt-12 pb-24">
-                {/* Header Section */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16">
-                    <div>
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="flex items-center gap-3 mb-4"
-                        >
-                            <div className="p-2 rounded-xl bg-primary/10 border border-primary/20">
-                                <LayoutDashboard className="h-6 w-6 text-primary" />
-                            </div>
-                            <span className="text-sm font-bold tracking-[0.3em] uppercase text-primary">Strategic Analytics</span>
-                        </motion.div>
-                        <motion.h1
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 }}
-                            className="text-5xl font-black tracking-tight"
-                        >
-                            Business <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-violet-400">Reports</span>
-                        </motion.h1>
-                        <motion.p
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.2 }}
-                            className="text-slate-400 mt-4 max-w-xl text-lg leading-relaxed"
-                        >
-                            Generate high-fidelity intelligence reports using core inventory metrics and AI-driven growth analysis.
-                        </motion.p>
+            <div className="relative z-10 max-w-[1400px] mx-auto px-8 py-16">
+                {/* Elite Header */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-12 mb-20">
+                    <div className="space-y-4">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 scale-90 origin-left">
+                            <Zap className="h-3 w-3 text-white fill-white" />
+                            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Advanced Intel Core v4.0</span>
+                        </div>
+                        <h1 className="text-6xl font-black text-white tracking-tighter leading-none">
+                            SKU<span className="text-zinc-500">Wise</span> <span className="text-white/20">/</span> Reports
+                        </h1>
+                        <p className="text-lg text-zinc-500 max-w-lg font-medium tracking-tight">
+                            Synthesized business intelligence for strategic inventory optimization and profitability tracking.
+                        </p>
                     </div>
 
                     {!reportData && !isGenerating && (
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="flex items-center gap-3 p-1 rounded-full bg-slate-900/50 border border-slate-800 backdrop-blur-xl"
-                        >
-                            {['Daily', 'Weekly', 'Quarterly'].map((period) => (
-                                <button key={period} className={cn(
-                                    "px-6 py-2 rounded-full text-xs font-bold tracking-widest uppercase transition-all",
-                                    period === 'Daily' ? "bg-primary text-white shadow-lg shadow-primary/20" : "text-slate-500 hover:text-slate-300"
-                                )}>
-                                    {period}
-                                </button>
-                            ))}
-                        </motion.div>
+                        <div className="flex flex-col items-end gap-2">
+                            <div className="h-px w-32 bg-gradient-to-l from-white/20 to-transparent" />
+                            <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">System Status: Operational</span>
+                        </div>
                     )}
                 </div>
 
                 <AnimatePresence mode="wait">
+                    {/* Error State */}
+                    {error && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-bold flex items-center gap-3 mb-12"
+                        >
+                            <AlertCircle className="h-5 w-5" />
+                            {error}. Please try again or check data connections.
+                        </motion.div>
+                    )}
+
                     {!reportData && !isGenerating ? (
                         <motion.div
-                            key="grid"
-                            initial={{ opacity: 0, y: 40 }}
+                            key="landing"
+                            initial={{ opacity: 0, y: 30 }}
                             animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95 }}
-                            className="grid grid-cols-1 md:grid-cols-2 gap-8"
+                            exit={{ opacity: 0, scale: 0.98 }}
+                            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
                         >
-                            {REPORT_TYPES.map((report, idx) => (
-                                <motion.button
-                                    key={report.id}
-                                    initial={{ opacity: 0, x: idx % 2 === 0 ? -20 : 20 }}
-                                    animate={{ opacity: 1, x: 0 }}
-                                    transition={{ delay: idx * 0.1 }}
-                                    onMouseEnter={() => setHoveredType(report.id)}
-                                    onMouseLeave={() => setHoveredType(null)}
-                                    onClick={() => handleGenerateReport(report.id)}
+                            {REPORT_CATEGORIES.map((cat, idx) => (
+                                <button
+                                    key={cat.id}
+                                    onClick={() => handleGenerateReport(cat.id)}
                                     className={cn(
-                                        "group relative flex flex-col p-8 rounded-[2.5rem] border border-slate-800 bg-slate-900/40 backdrop-blur-2xl transition-all duration-500 text-left overflow-hidden",
-                                        report.borderColor,
-                                        hoveredType === report.id && "translate-y-[-8px] shadow-2xl shadow-primary/10 border-primary/30"
+                                        "group relative flex flex-col p-8 rounded-2xl bg-[#121214] border border-white/5 transition-all duration-300",
+                                        "hover:bg-[#18181b] hover:border-white/20 hover:-translate-y-1",
+                                        cat.border
                                     )}
                                 >
-                                    {/* Gradient Overlay */}
-                                    <div className={cn(
-                                        "absolute inset-0 bg-gradient-to-br transition-opacity duration-500 opacity-0 group-hover:opacity-100",
-                                        report.color
-                                    )} />
-
-                                    <div className="relative z-10">
-                                        <div className={cn(
-                                            "w-16 h-16 rounded-2xl flex items-center justify-center mb-6 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6",
-                                            "bg-slate-800 border border-slate-700 shadow-inner"
-                                        )}>
-                                            <report.icon className={cn("h-8 w-8", report.iconColor)} />
-                                        </div>
-
-                                        <div className="flex items-center justify-between mb-2">
-                                            <h3 className="text-2xl font-black tracking-tight">{report.title}</h3>
-                                            <ChevronRight className="h-5 w-5 text-slate-600 group-hover:text-primary transition-all group-hover:translate-x-1" />
-                                        </div>
-                                        <p className="text-slate-400 text-sm leading-relaxed max-w-[80%] uppercase tracking-widest font-medium opacity-60">
-                                            {report.description}
-                                        </p>
+                                    <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-12 transition-all group-hover:scale-110", cat.bg)}>
+                                        <cat.icon className={cn("h-6 w-6", cat.accent)} />
                                     </div>
-
-                                    {/* Decorative Circles */}
-                                    <div className="absolute right-[-20px] bottom-[-20px] w-40 h-40 bg-white/5 blur-3xl rounded-full" />
-                                </motion.button>
+                                    <h3 className="text-xl font-black text-white mb-1 group-hover:text-white transition-colors">
+                                        {cat.title}
+                                    </h3>
+                                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-6">
+                                        {cat.subtitle}
+                                    </p>
+                                    <div className="mt-auto pt-8 flex items-center justify-between border-t border-white/5">
+                                        <span className="text-[10px] font-black text-zinc-600 group-hover:text-white transition-colors uppercase tracking-[0.2em]">Generate</span>
+                                        <ChevronRight className="h-4 w-4 text-zinc-700 group-hover:text-white transition-all group-hover:translate-x-1" />
+                                    </div>
+                                </button>
                             ))}
                         </motion.div>
                     ) : isGenerating ? (
@@ -257,65 +238,62 @@ export default function ReportsPage() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="flex flex-col items-center justify-center py-32"
+                            className="flex flex-col items-center justify-center py-40"
                         >
-                            <div className="relative">
-                                <div className="absolute inset-0 bg-primary/20 blur-[60px] animate-pulse rounded-full" />
-                                <RefreshCw className="h-20 w-20 animate-spin text-primary relative z-10" />
+                            <div className="relative w-24 h-24 mb-12">
+                                <div className="absolute inset-0 rounded-full border border-white/10 border-t-white animate-spin" />
+                                <RefreshCw className="absolute inset-0 m-auto h-8 w-8 text-white animate-pulse" />
                             </div>
-                            <h2 className="text-3xl font-black tracking-[0.2em] uppercase mt-12 mb-4">Synthesizing Data</h2>
-                            <p className="text-slate-500 font-mono tracking-tighter">COLLECTING_DATAPOINTS // AGGREGATING_INSIGHTS // MAPPING_TRENDS</p>
+                            <span className="text-[10px] font-black uppercase tracking-[0.5em] text-white">Processing Intelligence</span>
+                            <div className="mt-4 flex gap-1">
+                                {[0, 1, 2].map((i) => (
+                                    <div key={i} className="w-1 h-3 bg-white/20 animate-pulse" style={{ animationDelay: `${i * 0.2}s` }} />
+                                ))}
+                            </div>
                         </motion.div>
                     ) : (
                         <motion.div
                             key="report"
-                            initial={{ opacity: 0, scale: 0.98 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="space-y-8"
+                            initial={{ opacity: 0, y: 40 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="space-y-6"
                         >
-                            {/* Summary Cards Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {/* Summary Bar */}
+                            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
                                 {Object.entries(reportData.summary).map(([key, value], idx) => (
-                                    <motion.div
-                                        key={key}
-                                        initial={{ opacity: 0, y: 20 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: idx * 0.1 }}
-                                        className="p-8 rounded-[2rem] border border-slate-800 bg-slate-900/50 backdrop-blur-xl group hover:border-primary/30 transition-all shadow-xl"
-                                    >
-                                        <p className="text-slate-500 text-[10px] font-black tracking-[0.2em] uppercase mb-1">
-                                            {key.replace(/([A-Z])/g, " $1").trim()}
-                                        </p>
-                                        <div className="flex items-end justify-between">
-                                            <p className="text-3xl font-black tracking-tight">
-                                                {typeof value === "number" && (key.includes("Value") || key.includes("Revenue") || key.includes("Profit"))
-                                                    ? formatCurrency(value)
-                                                    : value.toLocaleString()}
-                                            </p>
-                                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                                                {idx % 2 === 0 ? <ArrowUpRight className="h-4 w-4 text-emerald-400" /> : <TrendingUp className="h-4 w-4 text-primary" />}
-                                            </div>
-                                        </div>
-                                    </motion.div>
+                                    <div key={key} className="p-6 rounded-2xl bg-white/5 border border-white/5 hover:border-white/10 transition-all">
+                                        <SafeMetric
+                                            label={key}
+                                            value={value}
+                                            isCurrency={key.toLowerCase().includes("value") || key.toLowerCase().includes("revenue") || key.toLowerCase().includes("profit")}
+                                        />
+                                    </div>
                                 ))}
+                                <div className="p-6 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-between">
+                                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-[0.2em]">Source Alpha</span>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                        <span className="text-sm font-bold text-white">LIVE_SYNC</span>
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Main Content Area */}
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            {/* Main Analysis Engine */}
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                                 {/* Insights Panel */}
-                                <div className="lg:col-span-1 space-y-6">
-                                    <div className="p-8 rounded-[2.5rem] border border-slate-800 bg-[#0f172a] shadow-2xl relative overflow-hidden">
-                                        <div className="absolute top-0 right-0 p-4">
-                                            <ShieldCheck className="h-5 w-5 text-primary opacity-20" />
+                                <div className="lg:col-span-4 flex flex-col gap-6">
+                                    <div className="p-8 rounded-3xl bg-[#121214] border border-white/5 flex-1 ring-1 ring-white/5">
+                                        <div className="flex items-center justify-between mb-8 pb-6 border-b border-white/5">
+                                            <h2 className="text-xs font-black uppercase tracking-[0.3em] text-white flex items-center gap-3">
+                                                <PieChart className="h-4 w-4 text-zinc-500" /> Analytical Insights
+                                            </h2>
+                                            <Shield className="h-4 w-4 text-white/20" />
                                         </div>
-                                        <h2 className="text-xl font-black tracking-widest uppercase mb-8 flex items-center gap-2">
-                                            <PieChart className="h-5 w-5 text-primary" /> Key Analysis
-                                        </h2>
                                         <div className="space-y-6">
                                             {reportData.insights.map((insight, i) => (
-                                                <div key={i} className="flex gap-4 group">
-                                                    <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary ring-4 ring-primary/10" />
-                                                    <p className="text-slate-400 text-sm leading-relaxed group-hover:text-slate-200 transition-colors">
+                                                <div key={i} className="group relative flex gap-4 p-4 rounded-xl hover:bg-white/5 transition-all">
+                                                    <div className="mt-1 w-1 h-1 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)] flex-shrink-0" />
+                                                    <p className="text-zinc-400 text-[13px] leading-relaxed font-medium group-hover:text-zinc-200">
                                                         {insight}
                                                     </p>
                                                 </div>
@@ -323,110 +301,106 @@ export default function ReportsPage() {
                                         </div>
                                     </div>
 
-                                    <div className="p-8 rounded-[2.5rem] border border-slate-800 bg-slate-900/40 backdrop-blur-lg">
-                                        <h2 className="text-lg font-black tracking-widest uppercase mb-6 flex items-center gap-2">
-                                            <Download className="h-5 w-5 text-emerald-500" /> Export Assets
-                                        </h2>
-                                        <div className="grid grid-cols-1 gap-3">
-                                            <button
-                                                onClick={() => handleExport("pdf")}
-                                                className="flex items-center justify-between p-4 rounded-2xl bg-[#ef4444]/10 border border-[#ef4444]/20 hover:bg-[#ef4444]/20 transition-all text-sm font-bold uppercase tracking-widest text-[#ef4444]"
-                                            >
-                                                <span>Standard PDF</span>
-                                                <FileType className="h-5 w-5" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleExport("csv")}
-                                                className="flex items-center justify-between p-4 rounded-2xl bg-[#10b981]/10 border border-[#10b981]/20 hover:bg-[#10b981]/20 transition-all text-sm font-bold uppercase tracking-widest text-[#10b981]"
-                                            >
-                                                <span>Data Sheet CSV</span>
-                                                <FileDown className="h-5 w-5" />
-                                            </button>
-                                            <button
-                                                onClick={() => handleExport("excel")}
-                                                className="flex items-center justify-between p-4 rounded-2xl bg-[#3b82f6]/10 border border-[#3b82f6]/20 hover:bg-[#3b82f6]/20 transition-all text-sm font-bold uppercase tracking-widest text-[#3b82f6]"
-                                            >
-                                                <span>XLSX Workbook</span>
-                                                <FileSpreadsheet className="h-5 w-5" />
-                                            </button>
+                                    <div className="p-8 rounded-3xl bg-[#121214] border border-white/5">
+                                        <div className="flex items-center gap-3 mb-6">
+                                            <Download className="h-4 w-4 text-zinc-500" />
+                                            <span className="text-xs font-black uppercase tracking-[0.2em] text-white">Exports</span>
+                                        </div>
+                                        <div className="grid grid-cols-1 gap-2">
+                                            {[
+                                                { label: "Intelligence PDF", format: "pdf", icon: FileType, color: "text-red-400" },
+                                                { label: "Dataset CSV", format: "csv", icon: FileDown, color: "text-emerald-400" },
+                                                { label: "Matrix XLS", format: "excel", icon: FileSpreadsheet, color: "text-blue-400" }
+                                            ].map((opt) => (
+                                                <button
+                                                    key={opt.format}
+                                                    onClick={() => handleExport(opt.format)}
+                                                    className="flex items-center justify-between p-4 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 transition-all group"
+                                                >
+                                                    <span className="text-[10px] font-black uppercase tracking-widest">{opt.label}</span>
+                                                    <opt.icon className={cn("h-4 w-4 opacity-40 group-hover:opacity-100 transition-all", opt.color)} />
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
 
                                     <button
                                         onClick={() => { setReportData(null); setSelectedType(null); }}
-                                        className="w-full p-6 rounded-[2rem] border border-slate-800 bg-slate-900/20 hover:bg-slate-900/40 transition-all text-xs font-black tracking-[0.3em] uppercase text-slate-500 hover:text-slate-300"
+                                        className="p-6 rounded-3xl bg-white/5 hover:bg-white/10 border border-white/5 text-[10px] font-black uppercase tracking-[0.5em] transition-all text-zinc-500 hover:text-white"
                                     >
-                                        ← New Intelligence Request
+                                        ← REFRESH_SYSTEM
                                     </button>
                                 </div>
 
-                                {/* Detailed Data Panel */}
-                                <div className="lg:col-span-2">
-                                    <div className="rounded-[2.5rem] border border-slate-800 bg-[#0f172a] shadow-2xl overflow-hidden h-full flex flex-col">
-                                        <div className="p-8 border-b border-slate-800 flex items-center justify-between bg-slate-900/50">
-                                            <h2 className="text-xl font-black tracking-widest uppercase flex items-center gap-2">
-                                                <BarChart3 className="h-5 w-5 text-primary" /> Integrated Data Lake
-                                            </h2>
-                                            <div className="relative">
-                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-600" />
+                                {/* Detailed Matrix */}
+                                <div className="lg:col-span-8">
+                                    <div className="rounded-3xl bg-[#121214] border border-white/5 h-full flex flex-col ring-1 ring-white/5 overflow-hidden">
+                                        <div className="p-8 border-b border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                            <div>
+                                                <h2 className="text-xs font-black uppercase tracking-[0.3em] text-white mb-1">Detailed Matrix</h2>
+                                                <p className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Active SKU Synchronization</p>
+                                            </div>
+                                            <div className="relative group">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-600 group-hover:text-zinc-400 transition-colors" />
                                                 <input
                                                     type="text"
-                                                    placeholder="FILTER_RECORDS..."
-                                                    className="bg-slate-950/50 border border-slate-800 rounded-xl pl-10 pr-4 py-2 text-xs font-mono tracking-tighter focus:outline-none focus:border-primary/50 transition-all"
+                                                    placeholder="SCAN_OBJECTS..."
+                                                    className="bg-[#09090b] border border-white/5 focus:border-white/20 rounded-xl pl-10 pr-4 py-3 text-[10px] font-bold tracking-widest uppercase focus:outline-none transition-all w-64"
                                                 />
                                             </div>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto max-h-[700px]">
-                                            <table className="w-full text-left">
-                                                <thead>
-                                                    <tr className="border-b border-slate-800 bg-slate-900/20">
-                                                        <th className="px-8 py-5 text-[10px] font-black tracking-widest text-slate-500 uppercase">Identity</th>
-                                                        <th className="px-8 py-5 text-[10px] font-black tracking-widest text-slate-500 uppercase">Sector</th>
-                                                        <th className="px-8 py-5 text-[10px] font-black tracking-widest text-slate-500 uppercase text-right">Liquidity</th>
-                                                        <th className="px-8 py-5 text-[10px] font-black tracking-widest text-slate-500 uppercase text-right">Valuation</th>
+
+                                        <div className="flex-1 overflow-y-auto max-h-[700px] custom-scrollbar">
+                                            <table className="w-full">
+                                                <thead className="sticky top-0 bg-[#121214] z-10 border-b border-white/5">
+                                                    <tr>
+                                                        <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-600 text-left">Entity</th>
+                                                        <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-600 text-left">Sector</th>
+                                                        <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-600 text-right">Liquidity</th>
+                                                        <th className="px-8 py-4 text-[10px] font-black uppercase tracking-widest text-zinc-600 text-right">Valuation</th>
                                                     </tr>
                                                 </thead>
-                                                <tbody className="divide-y divide-slate-800/50">
-                                                    {reportData.data.allProducts?.slice(0, 30).map((product) => (
-                                                        <tr key={product.id} className="hover:bg-primary/5 transition-colors group">
-                                                            <td className="px-8 py-5">
+                                                <tbody className="divide-y divide-white/5">
+                                                    {(reportData.data.allProducts || []).slice(0, 50).map((p) => (
+                                                        <tr key={p.id} className="hover:bg-white/[0.02] transition-colors group">
+                                                            <td className="px-8 py-6">
                                                                 <div className="flex flex-col">
-                                                                    <span className="font-bold text-slate-200 text-sm group-hover:text-primary transition-colors">{product.name}</span>
-                                                                    <span className="text-[10px] font-mono text-slate-600 uppercase mt-0.5 tracking-tighter">{product.sku}</span>
+                                                                    <span className="text-sm font-bold text-white group-hover:text-blue-400 transition-colors">{p.name}</span>
+                                                                    <span className="text-[9px] font-black text-zinc-700 uppercase tracking-[0.2em] mt-1">{p.sku}</span>
                                                                 </div>
                                                             </td>
-                                                            <td className="px-8 py-5">
-                                                                <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-slate-800 text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-all">
-                                                                    {product.category || "General"}
+                                                            <td className="px-8 py-6">
+                                                                <span className="px-3 py-1 rounded-full bg-white/5 text-[9px] font-black uppercase tracking-widest text-zinc-500 border border-white/5">
+                                                                    {p.category || "General"}
                                                                 </span>
                                                             </td>
-                                                            <td className="px-8 py-5 text-right">
-                                                                {product.stock <= (product.reorderPoint || 10) ? (
-                                                                    <div className="flex items-center justify-end gap-2 text-rose-500 font-black">
-                                                                        <AlertTriangle className="h-3 w-3" />
-                                                                        <span>{product.stock}</span>
-                                                                    </div>
-                                                                ) : (
-                                                                    <span className="font-bold text-slate-400">{product.stock}</span>
-                                                                )}
+                                                            <td className="px-8 py-6 text-right">
+                                                                <span className={cn(
+                                                                    "text-sm font-black",
+                                                                    (p.stock <= (p.reorderPoint || 10)) ? "text-red-500/80 shadow-[0_0_15px_rgba(239,68,68,0.2)]" : "text-zinc-500"
+                                                                )}>
+                                                                    {p.stock}
+                                                                </span>
                                                             </td>
-                                                            <td className="px-8 py-5 text-right font-mono font-bold text-emerald-500/80">
-                                                                {formatCurrency(product.price)}
+                                                            <td className="px-8 py-6 text-right font-mono text-sm font-bold text-emerald-500/80">
+                                                                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p.price)}
                                                             </td>
                                                         </tr>
                                                     ))}
                                                 </tbody>
                                             </table>
                                         </div>
-                                        <div className="p-6 bg-slate-900/50 border-t border-slate-800 flex items-center justify-between text-[10px] font-black tracking-[0.3em] uppercase text-slate-600">
-                                            <span>Showing top 30 intelligence points</span>
-                                            <span className="flex items-center gap-4">
-                                                <span>PAGE_01 // OFFSET_00</span>
-                                                <div className="flex gap-2">
-                                                    <button className="h-8 w-8 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center hover:text-slate-300">←</button>
-                                                    <button className="h-8 w-8 rounded-lg bg-slate-950 border border-slate-800 flex items-center justify-center hover:text-slate-300">→</button>
-                                                </div>
-                                            </span>
+
+                                        <div className="p-8 bg-black/20 border-t border-white/5 flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-zinc-600">
+                                            <div className="flex items-center gap-4">
+                                                <span>Total Matrix Points: {(reportData.data.allProducts || []).length}</span>
+                                                <div className="w-1 h-1 rounded-full bg-zinc-800" />
+                                                <span>Viewing First 50 Clusters</span>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <button className="h-10 w-10 flex items-center justify-center rounded-xl border border-white/5 hover:bg-white/5 transition-all"><ChevronRight className="rotate-180 h-4 w-4" /></button>
+                                                <button className="h-10 w-10 flex items-center justify-center rounded-xl border border-white/5 hover:bg-white/5 transition-all"><ChevronRight className="h-4 w-4" /></button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -435,6 +409,22 @@ export default function ReportsPage() {
                     )}
                 </AnimatePresence>
             </div>
+
+            <style jsx global>{`
+                .custom-scrollbar::-webkit-scrollbar {
+                    width: 6px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb {
+                    background: #27272a;
+                    border-radius: 10px;
+                }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+                    background: #3f3f46;
+                }
+            `}</style>
         </div>
     );
 }

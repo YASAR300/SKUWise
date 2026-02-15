@@ -88,7 +88,7 @@ export async function generateMarginReport(filters = {}) {
         const totalRevenue = productsWithMargin.reduce((sum, p) => sum + p.totalRevenue, 0);
         const totalCost = productsWithMargin.reduce((sum, p) => sum + p.totalCost, 0);
         const totalProfit = totalRevenue - totalCost;
-        const avgMarginPercent = (totalProfit / totalRevenue) * 100;
+        const avgMarginPercent = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
 
         // Find top/bottom performers
         const sortedByMargin = [...productsWithMargin].sort((a, b) => b.marginPercent - a.marginPercent);
@@ -153,7 +153,7 @@ export async function generateSalesReport(filters = {}) {
                 totalRevenue,
                 totalProfit,
                 productCount: products.length,
-                avgRevenuePerProduct: totalRevenue / products.length,
+                avgRevenuePerProduct: products.length > 0 ? totalRevenue / products.length : 0,
             },
             data: {
                 allProducts: productsWithSales,
@@ -190,9 +190,9 @@ export async function generateCompetitiveReport(filters = {}) {
 
         // Analyze each category
         const categoryAnalysis = Object.entries(byCategory).map(([category, items]) => {
-            const avgPrice = items.reduce((sum, p) => sum + p.price, 0) / items.length;
-            const avgCost = items.reduce((sum, p) => sum + p.cost, 0) / items.length;
-            const avgMargin = ((avgPrice - avgCost) / avgPrice) * 100;
+            const avgPrice = items.length > 0 ? items.reduce((sum, p) => sum + p.price, 0) / items.length : 0;
+            const avgCost = items.length > 0 ? items.reduce((sum, p) => sum + p.cost, 0) / items.length : 0;
+            const avgMargin = avgPrice > 0 ? ((avgPrice - avgCost) / avgPrice) * 100 : 0;
 
             return {
                 category,
