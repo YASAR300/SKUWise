@@ -37,9 +37,17 @@ export async function DELETE(request, { params }) {
     try {
         const { id } = await params;
 
-        await prisma.conversation.delete({
-            where: { id },
-        });
+        try {
+            await prisma.conversation.delete({
+                where: { id },
+            });
+        } catch (e) {
+            // P2025 is Prisma's code for "Record to delete does not exist"
+            // We can safely ignore this as the desired state (deletion) is achieved.
+            if (e.code !== 'P2025') {
+                throw e;
+            }
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {

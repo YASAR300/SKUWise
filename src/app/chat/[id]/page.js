@@ -36,6 +36,7 @@ export default function ChatPage() {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [conversation, setConversation] = useState(null);
     const [showSidebar, setShowSidebar] = useState(true);
     const [conversations, setConversations] = useState([]);
@@ -164,6 +165,11 @@ export default function ChatPage() {
     }
 
     async function handleDeleteConversation(id) {
+        if (isDeleting) return;
+
+        if (!confirm("Are you sure you want to delete this conversation?")) return;
+
+        setIsDeleting(true);
         try {
             const res = await fetch(`/api/conversations/${id}`, { method: "DELETE" });
             if (res.ok) {
@@ -183,6 +189,8 @@ export default function ChatPage() {
         } catch (error) {
             console.error("Failed to delete conversation:", error);
             alert("Error deleting conversation.");
+        } finally {
+            setIsDeleting(false);
         }
     }
 
