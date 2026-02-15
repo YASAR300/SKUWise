@@ -15,6 +15,7 @@ const navLinks = [
     { label: "Research", href: "/" },
     { label: "Catalog", href: "/catalog" },
     { label: "Growth", href: "/competitors" },
+    { label: "Reports", href: "/reports" },
 ];
 
 export default function Navbar() {

@@ -17,6 +17,7 @@ import {
     Menu,
     MessageSquare,
     Trash2,
+    FileText,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
@@ -211,13 +212,20 @@ export default function ChatPage() {
                         className="w-[280px] border-r border-border bg-card flex flex-col"
                     >
                         {/* Sidebar Header */}
-                        <div className="p-4 border-b border-border">
+                        <div className="p-4 border-b border-border space-y-2">
                             <button
                                 onClick={handleNewChat}
                                 className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all font-medium"
                             >
                                 <Plus className="h-5 w-5" />
                                 New Chat
+                            </button>
+                            <button
+                                onClick={() => router.push("/reports")}
+                                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground transition-all font-medium"
+                            >
+                                <FileText className="h-5 w-5 text-primary" />
+                                Business Reports
                             </button>
                         </div>
 
