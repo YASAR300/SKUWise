@@ -21,6 +21,7 @@ import {
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
 import { useTheme } from "next-themes";
+import ChatResponse from "@/components/ChatResponse";
 
 export default function ChatPage() {
     const params = useParams();
@@ -40,6 +41,7 @@ export default function ChatPage() {
     const [conversations, setConversations] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [showSettings, setShowSettings] = useState(false);
+    const hasInitialQuerySent = useRef(false);
 
     // Load conversation on mount
     useEffect(() => {
@@ -47,12 +49,13 @@ export default function ChatPage() {
         loadConversations();
     }, [conversationId]);
 
-    // Handle initial query
+    // Handle initial query (only once)
     useEffect(() => {
-        if (initialQuery && messages.length === 0) {
+        if (initialQuery && !hasInitialQuerySent.current && messages.length === 0) {
+            hasInitialQuerySent.current = true;
             handleSendMessage(initialQuery);
         }
-    }, [initialQuery]);
+    }, [initialQuery, messages.length]);
 
     // Auto-scroll to bottom
     useEffect(() => {
@@ -162,13 +165,24 @@ export default function ChatPage() {
 
     async function handleDeleteConversation(id) {
         try {
-            await fetch(`/api/conversations/${id}`, { method: "DELETE" });
-            loadConversations();
-            if (id === conversationId) {
-                router.push("/");
+            const res = await fetch(`/api/conversations/${id}`, { method: "DELETE" });
+            if (res.ok) {
+                // Refresh the list
+                await loadConversations();
+
+                // Only redirect if we deleted the current active conversation
+                if (id === conversationId) {
+                    router.push("/");
+                    router.refresh();
+                }
+            } else {
+                const error = await res.json();
+                console.error("Delete failed:", error);
+                alert("Failed to delete conversation.");
             }
         } catch (error) {
             console.error("Failed to delete conversation:", error);
+            alert("Error deleting conversation.");
         }
     }
 
@@ -327,8 +341,8 @@ export default function ChatPage() {
                                                     <Sparkles className="h-5 w-5 text-primary" />
                                                 </div>
                                                 <div className="flex-1">
-                                                    <div className="prose prose-sm dark:prose-invert max-w-none">
-                                                        <ReactMarkdown>{message.content}</ReactMarkdown>
+                                                    <div className="w-full">
+                                                        <ChatResponse content={message.content} />
                                                     </div>
 
                                                     {message.sources && message.sources.length > 0 && (

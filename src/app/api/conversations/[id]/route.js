@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 // GET /api/conversations/[id] - Get specific conversation with all messages
 export async function GET(request, { params }) {
     try {
-        const { id } = params;
+        const { id } = await params;
 
         const conversation = await prisma.conversation.findUnique({
             where: { id },
@@ -35,7 +35,7 @@ export async function GET(request, { params }) {
 // DELETE /api/conversations/[id] - Delete conversation
 export async function DELETE(request, { params }) {
     try {
-        const { id } = params;
+        const { id } = await params;
 
         await prisma.conversation.delete({
             where: { id },

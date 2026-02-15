@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import OpenAI from "openai";
 import { getContext, getDeepContext } from "@/lib/search-utils";
+import { prisma } from "@/lib/prisma";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 const geminiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
@@ -12,7 +13,7 @@ const openai = process.env.OPENAI_API_KEY
 
 export async function POST(request) {
     try {
-        const { query, mode = "quick", persona = "growth" } = await request.json();
+        const { query, mode = "quick", persona = "growth", conversationId } = await request.json();
 
         if (!query) {
             return NextResponse.json({ error: "Query is required" }, { status: 400 });
@@ -39,12 +40,46 @@ export async function POST(request) {
             contextString = "";
         }
 
-        // 2. Build Persona-Specific Guidance... (Persona Prompts Unchanged)
-        const personaPrompts = {
-            margin: `FOCUS: MARGIN OPTIMIZATION...`, // Shorthand for replacement, will use full text in actual file
-            growth: `FOCUS: AGGRESSIVE GROWTH...`
-        };
-        // NOTE: Keeping the full prompts for logic consistency
+        // 2. Fallback: If no vector results, fetch basic inventory stats directly from database
+        if (contextResults.length === 0 || !contextString) {
+            try {
+                // Check if query is about inventory/products
+                const inventoryKeywords = ["inventory", "product", "stock", "item", "sku", "how many", "count", "total"];
+                const isInventoryQuery = inventoryKeywords.some(keyword =>
+                    query.toLowerCase().includes(keyword)
+                );
+
+                if (isInventoryQuery) {
+                    const products = await prisma.product.findMany({
+                        take: 100, // Limit for performance
+                    });
+
+                    const totalProducts = await prisma.product.count();
+                    const totalStock = products.reduce((sum, p) => sum + p.stock, 0);
+                    const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
+                    const lowStock = products.filter(p => p.reorderPoint && p.stock <= p.reorderPoint);
+                    const outOfStock = products.filter(p => p.stock === 0);
+
+                    contextString = `
+INVENTORY DATABASE SUMMARY:
+- Total Products: ${totalProducts}
+- Total Stock Units: ${totalStock}
+- Categories: ${categories.join(", ")}
+- Low Stock Items: ${lowStock.length}
+- Out of Stock Items: ${outOfStock.length}
+
+TOP PRODUCTS:
+${products.slice(0, 10).map(p => `- ${p.name} (SKU: ${p.sku}): ${p.stock} units, $${p.price}`).join("\n")}
+                    `.trim();
+
+                    console.log("✅ Using direct database fallback for inventory query");
+                }
+            } catch (dbError) {
+                console.error("Database fallback failed:", dbError);
+            }
+        }
+
+        // 2. Build Persona-Specific Guidance
         const activePersonaPrompt = persona === "margin" ? `
         FOCUS: MARGIN OPTIMIZATION
         - Prioritize high-profitability SKUs.
@@ -121,10 +156,56 @@ export async function POST(request) {
                 .filter(q => q.length > 0);
         }
 
+        // 6. Save messages to database (if conversationId provided)
+        let userMessageId = null;
+        let aiMessageId = null;
+
+        if (conversationId) {
+            try {
+                // Save user message
+                const userMessage = await prisma.message.create({
+                    data: {
+                        conversationId,
+                        role: "user",
+                        content: query,
+                    }
+                });
+                userMessageId = userMessage.id;
+
+                // Save AI response
+                const aiMessage = await prisma.message.create({
+                    data: {
+                        conversationId,
+                        role: "assistant",
+                        content: answerText,
+                        sources: contextResults.map(r => ({ id: r.id, type: r.collection })),
+                        clarifications: clarifications,
+                    }
+                });
+                aiMessageId = aiMessage.id;
+
+                // Update conversation metadata
+                await prisma.conversation.update({
+                    where: { id: conversationId },
+                    data: {
+                        totalQueries: { increment: 1 },
+                        updatedAt: new Date(),
+                    }
+                });
+
+                console.log(`✅ Messages saved to database: User=${userMessageId}, AI=${aiMessageId}`);
+            } catch (dbError) {
+                console.error("❌ Failed to save messages to database:", dbError);
+                // Continue without failing - messages still returned to user
+            }
+        }
+
         return NextResponse.json({
             answer: answerText,
             clarifications: clarifications,
-            sources: contextResults.map(r => ({ id: r.id, type: r.collection }))
+            sources: contextResults.map(r => ({ id: r.id, type: r.collection })),
+            userMessageId,
+            aiMessageId,
         });
 
     } catch (error) {
