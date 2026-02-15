@@ -17,7 +17,9 @@ import {
     Tag,
     Coins,
     Warehouse,
-    Activity
+    Activity,
+    Shield,
+    Zap
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
