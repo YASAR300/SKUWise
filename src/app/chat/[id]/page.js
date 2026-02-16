@@ -63,10 +63,6 @@ export default function ChatPage() {
         }
     }, [conversationId, status]);
 
-    if (status === "loading") {
-        return <div className="h-screen w-full flex items-center justify-center font-black uppercase tracking-[0.3em] opacity-20">Retrieving_Neural_History...</div>;
-    }
-
     // Handle initial query (only once)
     useEffect(() => {
         if (initialQuery && !hasInitialQuerySent.current && messages.length === 0) {
@@ -79,6 +75,10 @@ export default function ChatPage() {
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
+
+    if (status === "loading") {
+        return <div className="h-screen w-full flex items-center justify-center font-black uppercase tracking-[0.3em] opacity-20">Retrieving_Neural_History...</div>;
+    }
 
     async function loadConversation() {
         try {

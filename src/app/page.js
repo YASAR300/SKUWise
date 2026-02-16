@@ -46,25 +46,6 @@ export default function Home() {
     }
   }, [status]);
 
-  // Suggest protection if loading
-  if (status === "loading") {
-    return <div className="h-screen w-full flex items-center justify-center font-black uppercase tracking-[0.3em] opacity-20">Initializing_Cognitive_Core...</div>;
-  }
-
-  const aiModes = [
-    { id: "quick", label: "Quick Analysis", description: "Fast insights", icon: Zap },
-    { id: "thinking", label: "Thinking", description: "Deep reasoning", icon: BrainCircuit },
-    { id: "deep", label: "Deep research", description: "Comprehensive analysis", icon: TrendingUp },
-    { id: "shopping", label: "Shopping research", description: "Product comparison", icon: ShoppingCart },
-  ];
-
-  const moreOptions = [
-    { id: "study", label: "Study and learn", icon: GraduationCap },
-    { id: "web", label: "Web search", icon: Globe },
-    { id: "canvas", label: "Canvas", icon: Palette },
-    { id: "quiz", label: "Quizzes", icon: HelpCircle },
-  ];
-
   // Close menu when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
@@ -83,6 +64,11 @@ export default function Home() {
       document.body.style.overflow = 'auto';
     };
   }, []);
+
+  // Suggest protection if loading
+  if (status === "loading") {
+    return <div className="h-screen w-full flex items-center justify-center font-black uppercase tracking-[0.3em] opacity-20">Initializing_Cognitive_Core...</div>;
+  }
 
   const suggestedQueries = [
     "Analyze Q4 margin leakage",
