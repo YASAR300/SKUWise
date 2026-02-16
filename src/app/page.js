@@ -30,6 +30,20 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
+const aiModes = [
+  { id: "quick", label: "Quick Analysis", description: "Fast insights", icon: Zap },
+  { id: "thinking", label: "Thinking", description: "Deep reasoning", icon: BrainCircuit },
+  { id: "deep", label: "Deep research", description: "Comprehensive analysis", icon: TrendingUp },
+  { id: "shopping", label: "Shopping research", description: "Product comparison", icon: ShoppingCart },
+];
+
+const moreOptions = [
+  { id: "study", label: "Study and learn", icon: GraduationCap },
+  { id: "web", label: "Web search", icon: Globe },
+  { id: "canvas", label: "Canvas", icon: Palette },
+  { id: "quiz", label: "Quizzes", icon: HelpCircle },
+];
+
 export default function Home() {
   const { status } = useSession();
   const router = useRouter();
