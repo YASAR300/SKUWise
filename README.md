@@ -706,13 +706,63 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 *Clean, modern search interface with AI mode selector, file upload, and voice input*
 
-### Chat Interface
+### 📱 Visual Interface Blueprints
 
-- **Full-screen chat experience** (no navbar)
-- **Collapsible sidebar** with conversation history
-- **Theme toggle** (dark/light mode)
-- **Settings modal** for preferences
-- **Message display** with sources and clarifications
+Since the platform is optimized for elite Supply Chain operations, these blueprints represent the high-fidelity UI/UX structure currently implemented.
+
+#### 📦 Catalog Dashboard Architecture
+```mermaid
+flowchart TD
+    Header[Neural Header: Search & Status]
+    Filters[Horizontal Category Scrollbar: Furniture | Electronics | Office]
+    Sorts[Dedicated Sort Row: Recent | Price | Stock]
+    Grid[Asset Matrix: High-Density Product Cards]
+    
+    Header --> Filters
+    Filters --> Sorts
+    Sorts --> Grid
+    
+    style Header fill:#111,stroke:#4F46E5,color:#fff
+    style Filters fill:#1a1a1a,stroke:#38B2AC,color:#fff
+    style Sorts fill:#1a1a1a,stroke:#38B2AC,color:#fff
+    style Grid fill:#000,stroke:#333,color:#fff
+```
+
+#### 📊 Strategic Analysis Node
+```mermaid
+flowchart LR
+    Metrics[Summary Matrix: Gap Analysis | Risk Assets | Sector Map]
+    Diagnosis[Root Cause Panel: Diagnostic Report Flow]
+    Trend[Disparity Map: Interactive Asset List]
+    
+    Metrics --> Trend
+    Trend --> Diagnosis
+    
+    style Metrics fill:#111,stroke:#4285F4,color:#fff
+    style Trend fill:#1a1a1a,stroke:#DC382C,color:#fff
+    style Diagnosis fill:#111,stroke:#38B2AC,color:#fff
+```
+
+#### 💬 Neural Chat Interface
+```mermaid
+flowchart TB
+    Sidebar[Neural History: Saved Sessions & Search]
+    Chat[Dynamic Workspace: Message Flow]
+    Input[Thinking Input: Neural Modes Selector]
+    
+    subgraph Response[Elite Response Rendering]
+        M_Cards[Metric Cards: Revenue / Stock]
+        S_Dir[Strategic Directive Callouts]
+    end
+    
+    Chat --> Response
+    Input --> Chat
+    Sidebar <--> Chat
+    
+    style Sidebar fill:#111,stroke:#333,color:#fff
+    style Chat fill:#0a0a0a,stroke:#4F46E5,color:#fff
+    style Response fill:#111,stroke:#38B2AC,color:#fff
+```
 
 ### UI/UX Highlights
 
