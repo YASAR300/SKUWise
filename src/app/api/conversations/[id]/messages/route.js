@@ -1,53 +1,33 @@
-import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
-// POST /api/conversations/[id]/messages - Add message to conversation
-export async function POST(request, { params }) {
+export async function GET(req, { params }) {
     try {
-        const { id } = params;
-        const body = await request.json();
-
-        const {
-            role, // "user" or "assistant"
-            content,
-            query,
-            mode,
-            persona,
-            sources,
-            clarifications,
-        } = body;
-
-        // Create message
-        const message = await prisma.message.create({
-            data: {
-                conversationId: id,
-                role,
-                content,
-                query: role === "user" ? query : null,
-                mode: role === "user" ? mode : null,
-                persona: role === "user" ? persona : null,
-                sources: role === "assistant" ? sources : null,
-                clarifications: role === "assistant" ? clarifications : null,
-            },
-        });
-
-        // Update conversation totalQueries if user message
-        if (role === "user") {
-            await prisma.conversation.update({
-                where: { id },
-                data: {
-                    totalQueries: { increment: 1 },
-                    updatedAt: new Date(),
-                },
-            });
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        return NextResponse.json({ message });
+        const { id } = await params;
+
+        // Ensure conversation belongs to user
+        const conversation = await prisma.conversation.findFirst({
+            where: { id, userId: session.user.id }
+        });
+
+        if (!conversation) {
+            return NextResponse.json({ error: "Unauthorized or not found" }, { status: 404 });
+        }
+
+        const messages = await prisma.message.findMany({
+            where: { conversationId: id },
+            orderBy: { createdAt: "asc" }
+        });
+
+        return NextResponse.json({ messages });
     } catch (error) {
-        console.error("Error adding message:", error);
-        return NextResponse.json(
-            { error: "Failed to add message" },
-            { status: 500 }
-        );
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 export async function GET(req) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         const { searchParams } = new URL(req.url);
-        
+
         // Pagination params
         const page = parseInt(searchParams.get("page") || "1");
         const limit = parseInt(searchParams.get("limit") || "20");
@@ -18,6 +25,7 @@ export async function GET(req) {
 
         // Query construction
         const where = {
+            userId: session.user.id,
             AND: [
                 search ? {
                     OR: [
@@ -29,18 +37,24 @@ export async function GET(req) {
             ]
         };
 
-        const [products, totalItems] = await Promise.all([
+        const [products, totalItems, categories] = await Promise.all([
             prisma.product.findMany({
                 where,
                 orderBy: { [sortBy]: sortOrder },
                 take: limit,
                 skip: skip,
             }),
-            prisma.product.count({ where })
+            prisma.product.count({ where }),
+            prisma.product.findMany({
+                where: { userId: session.user.id },
+                select: { category: true },
+                distinct: ['category'],
+            })
         ]);
 
         return NextResponse.json({
             products,
+            categories: categories.map(c => c.category),
             pagination: {
                 totalItems,
                 totalPages: Math.ceil(totalItems / limit),
@@ -56,6 +70,11 @@ export async function GET(req) {
 
 export async function POST(req) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         const body = await req.json();
         const { name, category, price, stock, cost, reorderPoint } = body;
 
@@ -69,6 +88,7 @@ export async function POST(req) {
             // Attempt full creation with new fields
             product = await prisma.product.create({
                 data: {
+                    userId: session.user.id,
                     name: String(name),
                     category: String(category),
                     price: parseFloat(price),
@@ -83,6 +103,7 @@ export async function POST(req) {
             console.warn("⚠️ Prisma Client Sync Error. Retrying without 'cost' field:", initialError.message);
             product = await prisma.product.create({
                 data: {
+                    userId: session.user.id,
                     name: String(name),
                     category: String(category),
                     price: parseFloat(price),

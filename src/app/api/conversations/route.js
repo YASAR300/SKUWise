@@ -1,60 +1,51 @@
-import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
-// GET /api/conversations - List all conversations
 export async function GET() {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         const conversations = await prisma.conversation.findMany({
+            where: { userId: session.user.id },
             orderBy: { updatedAt: "desc" },
             include: {
-                messages: {
-                    orderBy: { createdAt: "asc" },
-                    take: 1, // Just get the first message for the title
-                },
-            },
+                _count: {
+                    select: { messages: true }
+                }
+            }
         });
 
-        // Format response
-        const formatted = conversations.map((conv) => ({
-            id: conv.id,
-            title: conv.title,
-            persona: conv.persona,
-            mode: conv.mode,
-            totalQueries: conv.totalQueries,
-            createdAt: conv.createdAt,
-            updatedAt: conv.updatedAt,
-            firstMessage: conv.messages[0]?.content || "",
-        }));
-
-        return NextResponse.json({ conversations: formatted });
+        return NextResponse.json({ conversations });
     } catch (error) {
-        console.error("Error fetching conversations:", error);
-        return NextResponse.json(
-            { error: "Failed to fetch conversations" },
-            { status: 500 }
-        );
+        console.error("List Conversations Error:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }
 
-// POST /api/conversations - Create new conversation
-export async function POST(request) {
+export async function POST(req) {
     try {
-        const { persona = "growth", mode = "quick", title } = await request.json();
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
 
+        const { title, persona, mode } = await req.json();
         const conversation = await prisma.conversation.create({
             data: {
-                title: title || "New Conversation",
-                persona,
-                mode,
-            },
+                userId: session.user.id,
+                title: title || "New Strategy",
+                persona: persona || "growth",
+                mode: mode || "quick",
+            }
         });
-
         return NextResponse.json({ conversation });
     } catch (error) {
-        console.error("Error creating conversation:", error);
-        return NextResponse.json(
-            { error: "Failed to create conversation" },
-            { status: 500 }
-        );
+        console.error("Create Conversation Error:", error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

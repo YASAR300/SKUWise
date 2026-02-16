@@ -26,10 +26,12 @@ import {
   ChevronRight
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 export default function Home() {
+  const { status } = useSession();
   const router = useRouter();
   const [isFocused, setIsFocused] = useState(false);
   const [query, setQuery] = useState("");
@@ -37,6 +39,17 @@ export default function Home() {
   const [mode, setMode] = useState("quick");
   const [showModeMenu, setShowModeMenu] = useState(false);
   const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login");
+    }
+  }, [status]);
+
+  // Suggest protection if loading
+  if (status === "loading") {
+    return <div className="h-screen w-full flex items-center justify-center font-black uppercase tracking-[0.3em] opacity-20">Initializing_Cognitive_Core...</div>;
+  }
 
   const aiModes = [
     { id: "quick", label: "Quick Analysis", description: "Fast insights", icon: Zap },

@@ -24,7 +24,10 @@ import ReactMarkdown from "react-markdown";
 import { useTheme } from "next-themes";
 import ChatResponse from "@/components/ChatResponse";
 
+import { useSession } from "next-auth/react";
+
 export default function ChatPage() {
+    const { status } = useSession();
     const params = useParams();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -45,11 +48,24 @@ export default function ChatPage() {
     const [showSettings, setShowSettings] = useState(false);
     const hasInitialQuerySent = useRef(false);
 
+    // Initial Auth Redirect
+    useEffect(() => {
+        if (status === "unauthenticated") {
+            router.push("/login");
+        }
+    }, [status]);
+
     // Load conversation on mount
     useEffect(() => {
-        loadConversation();
-        loadConversations();
-    }, [conversationId]);
+        if (status === "authenticated") {
+            loadConversation();
+            loadConversations();
+        }
+    }, [conversationId, status]);
+
+    if (status === "loading") {
+        return <div className="h-screen w-full flex items-center justify-center font-black uppercase tracking-[0.3em] opacity-20">Retrieving_Neural_History...</div>;
+    }
 
     // Handle initial query (only once)
     useEffect(() => {
@@ -67,6 +83,10 @@ export default function ChatPage() {
     async function loadConversation() {
         try {
             const res = await fetch(`/api/conversations/${conversationId}`);
+            if (res.status === 401) {
+                router.push("/login");
+                return;
+            }
             if (res.ok) {
                 const data = await res.json();
                 setConversation(data.conversation);
@@ -80,6 +100,10 @@ export default function ChatPage() {
     async function loadConversations() {
         try {
             const res = await fetch("/api/conversations");
+            if (res.status === 401) {
+                router.push("/login");
+                return;
+            }
             if (res.ok) {
                 const data = await res.json();
                 setConversations(data.conversations || []);
@@ -113,6 +137,11 @@ export default function ChatPage() {
                     conversationId,
                 }),
             });
+
+            if (res.status === 401) {
+                router.push("/login");
+                return;
+            }
 
             const data = await res.json();
 

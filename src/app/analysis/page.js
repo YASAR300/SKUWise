@@ -23,19 +23,31 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export default function AnalysisPage() {
+    const { status } = useSession();
+    const router = useRouter();
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [category, setCategory] = useState("all");
     const [selectedAsset, setSelectedAsset] = useState(null);
+    const [availableCategories, setAvailableCategories] = useState(["all"]);
 
     const fetchAnalysis = async () => {
         setLoading(true);
         try {
             const res = await fetch(`/api/analysis?category=${category}`);
+            if (res.status === 401) {
+                router.push("/login");
+                return;
+            }
             const result = await res.json();
             setData(result);
+            if (result.categories) {
+                setAvailableCategories(["all", ...result.categories.filter(c => c !== "all")]);
+            }
         } catch (err) {
             console.error("Analysis Link Failed:", err);
         } finally {
@@ -44,10 +56,16 @@ export default function AnalysisPage() {
     };
 
     useEffect(() => {
-        fetchAnalysis();
-    }, [category]);
+        if (status === "unauthenticated") {
+            router.push("/login");
+        } else if (status === "authenticated") {
+            fetchAnalysis();
+        }
+    }, [category, status]);
 
-    const categories = ["all", "Electronics", "Furniture", "Books", "Toys", "Home & Kitchen"];
+    if (status === "loading") {
+        return <div className="min-h-screen flex items-center justify-center font-black uppercase tracking-widest opacity-20">Synchronizing_Neural_Node...</div>;
+    }
 
     return (
         <div className="max-w-[1400px] mx-auto space-y-10 py-12 px-8 relative min-h-screen pb-32">
@@ -74,7 +92,7 @@ export default function AnalysisPage() {
 
                 <div className="flex items-center gap-4">
                     <div className="flex bg-secondary p-1 rounded-xl border border-border overflow-x-auto no-scrollbar max-w-md">
-                        {categories.map((cat) => (
+                        {availableCategories.map((cat) => (
                             <button
                                 key={cat}
                                 onClick={() => setCategory(cat)}
@@ -105,7 +123,7 @@ export default function AnalysisPage() {
                             </div>
                             <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Market_Price_Gap</h3>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-3xl font-black italic">{data.summary.avgMarketGap}%</span>
+                                <span className="text-3xl font-black italic">{data?.summary?.avgMarketGap || 0}%</span>
                                 <TrendingUp className="h-4 w-4 text-rose-500" />
                             </div>
                         </motion.div>
@@ -117,7 +135,7 @@ export default function AnalysisPage() {
                             </div>
                             <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">High_Risk_Assets</h3>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-3xl font-black italic">{data.summary.highRiskAssets}</span>
+                                <span className="text-3xl font-black italic">{data?.summary?.highRiskAssets || 0}</span>
                                 <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-tighter">Critical_Alerts</span>
                             </div>
                         </motion.div>
@@ -129,7 +147,7 @@ export default function AnalysisPage() {
                             </div>
                             <h3 className="text-[9px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Analyzed_Sectors</h3>
                             <div className="flex items-baseline gap-2">
-                                <span className="text-3xl font-black italic">{data.summary.totalAnalyzed}</span>
+                                <span className="text-3xl font-black italic">{data?.summary?.totalAnalyzed || 0}</span>
                                 <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-tighter">Active_Nodes</span>
                             </div>
                         </motion.div>
@@ -142,39 +160,46 @@ export default function AnalysisPage() {
                                 <Search className="h-3 w-3" /> Competitive_Disparity_Map
                             </h2>
                             <div className="grid gap-3">
-                                {data.analysis.map((asset, idx) => (
-                                    <motion.div
-                                        key={asset.id}
-                                        onClick={() => setSelectedAsset(asset)}
-                                        className={cn(
-                                            "flex items-center justify-between p-4 bg-card border rounded-2xl transition-all cursor-pointer group",
-                                            selectedAsset?.id === asset.id ? "border-primary shadow-lg ring-2 ring-primary/5 translate-x-1" : "border-border hover:border-foreground/10"
-                                        )}
-                                    >
-                                        <div className="flex items-center gap-4">
-                                            <div className={cn(
-                                                "h-10 w-10 rounded-xl flex items-center justify-center text-xs font-black italic",
-                                                asset.severity === 'high' ? "bg-rose-500/10 text-rose-500" : "bg-secondary text-muted-foreground"
-                                            )}>
-                                                {idx + 1}
-                                            </div>
-                                            <div>
-                                                <h4 className="font-black italic text-base tracking-tight uppercase leading-tight">{asset.name}</h4>
-                                                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{asset.category}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-8">
-                                            <div className="text-right">
-                                                <p className="text-[8px] font-black text-muted-foreground uppercase mb-0.5">Deviation</p>
-                                                <div className={cn("text-sm font-black italic flex items-center gap-1", parseFloat(asset.priceGap) > 0 ? "text-rose-500" : "text-emerald-500")}>
-                                                    {asset.priceGap}%
-                                                    {parseFloat(asset.priceGap) > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                                {data?.analysis?.length > 0 ? (
+                                    data.analysis.map((asset, idx) => (
+                                        <motion.div
+                                            key={asset.id}
+                                            onClick={() => setSelectedAsset(asset)}
+                                            className={cn(
+                                                "flex items-center justify-between p-4 bg-card border rounded-2xl transition-all cursor-pointer group",
+                                                selectedAsset?.id === asset.id ? "border-primary shadow-lg ring-2 ring-primary/5 translate-x-1" : "border-border hover:border-foreground/10"
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                <div className={cn(
+                                                    "h-10 w-10 rounded-xl flex items-center justify-center text-xs font-black italic",
+                                                    asset.severity === 'high' ? "bg-rose-500/10 text-rose-500" : "bg-secondary text-muted-foreground"
+                                                )}>
+                                                    {idx + 1}
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-black italic text-base tracking-tight uppercase leading-tight">{asset.name}</h4>
+                                                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{asset.category}</p>
                                                 </div>
                                             </div>
-                                            <ChevronRight className="h-4 w-4 text-muted-foreground/20 group-hover:text-primary transition-colors" />
-                                        </div>
-                                    </motion.div>
-                                ))}
+                                            <div className="flex items-center gap-8">
+                                                <div className="text-right">
+                                                    <p className="text-[8px] font-black text-muted-foreground uppercase mb-0.5">Deviation</p>
+                                                    <div className={cn("text-sm font-black italic flex items-center gap-1", parseFloat(asset.priceGap) > 0 ? "text-rose-500" : "text-emerald-500")}>
+                                                        {asset.priceGap}%
+                                                        {parseFloat(asset.priceGap) > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                                                    </div>
+                                                </div>
+                                                <ChevronRight className="h-4 w-4 text-muted-foreground/20 group-hover:text-primary transition-colors" />
+                                            </div>
+                                        </motion.div>
+                                    ))
+                                ) : (
+                                    <div className="p-12 border border-dashed border-border rounded-2xl flex flex-col items-center justify-center text-center opacity-40 grayscale">
+                                        <Layers className="h-8 w-8 mb-4" />
+                                        <p className="text-[10px] font-black uppercase tracking-widest">No_Strategic_Disparities_Detected</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
 

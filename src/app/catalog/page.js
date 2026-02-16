@@ -30,8 +30,13 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export default function CatalogPage() {
+    const { status } = useSession();
+    const router = useRouter();
+    const [availableCategories, setAvailableCategories] = useState(["all"]);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
@@ -62,6 +67,7 @@ export default function CatalogPage() {
     });
 
     const fetchProducts = useCallback(async () => {
+        if (status !== "authenticated") return;
         setLoading(true);
         setError(null);
         try {
@@ -73,11 +79,22 @@ export default function CatalogPage() {
                 sortOrder
             });
             const res = await fetch(`/api/products?${params.toString()}`);
+
+            if (res.status === 401) {
+                router.push("/login");
+                return;
+            }
+
             const data = await res.json();
 
             if (res.ok) {
-                setProducts(data.products);
-                setPagination(data.pagination);
+                setProducts(data.products || []);
+                setPagination(data.pagination || { totalPages: 1, totalItems: 0 });
+
+                // Update dynamic categories
+                if (data.categories) {
+                    setAvailableCategories(["all", ...data.categories.filter(c => c !== "all")]);
+                }
             } else {
                 throw new Error(data.error || "Failed to fetch sector data");
             }
@@ -87,14 +104,22 @@ export default function CatalogPage() {
         } finally {
             setLoading(false);
         }
-    }, [page, search, category, sortBy, sortOrder]);
+    }, [page, search, category, sortBy, sortOrder, status]);
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            fetchProducts();
-        }, 300); // Debounce search
-        return () => clearTimeout(timer);
-    }, [fetchProducts]);
+        if (status === "unauthenticated") {
+            router.push("/login");
+        } else if (status === "authenticated") {
+            const timer = setTimeout(() => {
+                fetchProducts();
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+    }, [fetchProducts, status]);
+
+    if (status === "loading") {
+        return <div className="min-h-screen flex items-center justify-center font-black uppercase tracking-widest opacity-20">Accessing_Catalog_Node...</div>;
+    }
 
     const handleOcrScan = async (file) => {
         if (!file) return;
@@ -188,8 +213,6 @@ export default function CatalogPage() {
         }
     };
 
-    const categories = ["all", "Electronics", "Furniture", "Books", "Toys", "Fashion", "Home & Kitchen", "Sports"];
-
     return (
         <div className="max-w-[1400px] mx-auto space-y-12 py-16 px-8 relative min-h-screen pb-32">
             {/* Background Decor */}
@@ -252,10 +275,9 @@ export default function CatalogPage() {
                 </div>
             </header>
 
-            {/* Advanced Filters & Sorting */}
             <div className="flex flex-wrap items-center justify-between gap-6 pb-4 overflow-x-auto no-scrollbar">
                 <div className="flex items-center gap-2">
-                    {categories.map((cat) => (
+                    {availableCategories.map((cat) => (
                         <button
                             key={cat}
                             onClick={() => { setCategory(cat); setPage(1); }}

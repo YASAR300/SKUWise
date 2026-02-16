@@ -7,15 +7,30 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id               String            @id @default(cuid())
+  email            String            @unique
+  password         String
+  name             String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  products         Product[]
+  conversations    Conversation[]
+  researchSessions ResearchSession[]
+  trainingExamples TrainingExample[]
+}
+
 model Product {
   id              String           @id @default(cuid())
+  userId          String?          // Made optional for migration
+  user            User?            @relation(fields: [userId], references: [id])
   name            String
   category        String
   price           Float
   rating          Float?
   stock           Int              @default(0)
-  cost            Float?           // For valuation and margin analysis
-  reorderPoint    Int?             // For inventory health monitoring
+  cost            Float?           
+  reorderPoint    Int?             
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   reviews         Review[]
@@ -30,7 +45,7 @@ model Review {
   rating        Int
   comment       String?
   date          DateTime @default(now())
-  sentiment     String?  // Optional: For pre-calculated sentiment
+  sentiment     String?  
 }
 
 model CompetitorData {
@@ -39,7 +54,7 @@ model CompetitorData {
   product         Product  @relation(fields: [productId], references: [id])
   competitorName  String
   competitorPrice Float
-  features        Json?    // Array of strings or object
+  features        Json?    
   rating          Float?
   updatedAt       DateTime @updatedAt
 }
@@ -55,19 +70,21 @@ model SalesData {
 
 model ResearchSession {
   id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
   query     String
   result    Json
   createdAt DateTime @default(now())
-  prefs     Json?    // User preferences for this session (margins vs growth)
+  prefs     Json?    
 }
-
-// Chat History & ML Training Models
 
 model Conversation {
   id           String    @id @default(cuid())
-  title        String    // Auto-generated from first query
-  persona      String    @default("growth") // growth/margin
-  mode         String    @default("quick")  // quick/deep
+  userId       String?
+  user         User?     @relation(fields: [userId], references: [id])
+  title        String    
+  persona      String    @default("growth") 
+  mode         String    @default("quick")  
   totalQueries Int       @default(0)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -81,22 +98,19 @@ model Message {
   conversationId String
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   
-  role           String       // "user" or "assistant"
+  role           String       
   content        String       @db.Text
   
-  // Query metadata (for user messages)
   query          String?      @db.Text
   mode           String?
   persona        String?
   
-  // Response metadata (for assistant messages)
-  sources        Json?        // Retrieved sources
-  clarifications Json?        // Suggested refinements
+  sources        Json?        
+  clarifications Json?        
   
-  // ML Training signals
-  wasHelpful     Boolean?     // User feedback (thumbs up/down)
-  userFeedback   String?      @db.Text // Optional text feedback
-  selectedRefinement String?   // If user clicked a refinement
+  wasHelpful     Boolean?     
+  userFeedback   String?      @db.Text 
+  selectedRefinement String?   
   
   createdAt      DateTime     @default(now())
   
@@ -106,22 +120,20 @@ model Message {
 
 model TrainingExample {
   id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
   
-  // Input context
   query     String   @db.Text
-  context   Json     // Retrieved sources/data
+  context   Json     
   persona   String
   mode      String
   
-  // Generated output
   response  String   @db.Text
   
-  // Quality signals for training
   wasHelpful Boolean  @default(false)
   userFeedback String? @db.Text
   
-  // For continuous learning
-  embedding  Json?    // Query embedding vector
+  embedding  Json?    
   createdAt  DateTime @default(now())
   
   @@index([wasHelpful])

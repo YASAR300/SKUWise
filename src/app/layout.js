@@ -5,26 +5,30 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { usePathname } from "next/navigation";
+import { Providers } from "@/components/Providers";
 
 const inter = Inter({ subsets: ["latin"] });
 
 function LayoutContent({ children }) {
   const pathname = usePathname();
   const isChatRoute = pathname?.startsWith("/chat/");
+  const isAuthRoute = pathname === "/login" || pathname === "/register";
 
   return (
-    <div className="relative min-h-screen">
-      {!isChatRoute && (
-        <>
-          <div className="aurora-bg" />
-          <div className="grid-bg" />
-          <Navbar />
-        </>
-      )}
-      <main className={isChatRoute ? "" : "pt-24 pb-12 px-6"}>
-        {children}
-      </main>
-    </div>
+    <Providers>
+      <div className="relative min-h-screen">
+        {!isChatRoute && !isAuthRoute && (
+          <>
+            <div className="aurora-bg" />
+            <div className="grid-bg" />
+            <Navbar />
+          </>
+        )}
+        <main className={isChatRoute ? "" : "pt-24 pb-12 px-6"}>
+          {children}
+        </main>
+      </div>
+    </Providers>
   );
 }
 
