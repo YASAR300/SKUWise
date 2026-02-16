@@ -14,6 +14,7 @@ import { motion } from "framer-motion";
 const navLinks = [
     { label: "Research", href: "/" },
     { label: "Catalog", href: "/catalog" },
+    { label: "Analysis", href: "/analysis" },
     { label: "Growth", href: "/competitors" },
     { label: "Reports", href: "/reports" },
 ];
