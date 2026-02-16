@@ -49,7 +49,7 @@ export async function POST(req) {
             contextMessage = "Scan this image of a product list or screenshot.";
         }
 
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         const prompt = `
             Act as an expert data extractor. ${contextMessage}
