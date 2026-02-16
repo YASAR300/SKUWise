@@ -16,7 +16,7 @@ export async function GET(req) {
         const where = {
             userId: session.user.id,
             AND: [
-                category !== "all" ? { category } : {}
+                category !== "all" ? { category: { equals: category, mode: 'insensitive' } } : {}
             ]
         };
 
@@ -78,7 +78,10 @@ export async function GET(req) {
 
         return NextResponse.json({
             analysis,
-            categories: userCategories.map(c => c.category),
+            categories: [...new Set(userCategories.map(c => {
+                const cat = c.category || "General";
+                return cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
+            }))].sort(),
             summary: {
                 totalAnalyzed: products.length,
                 highRiskAssets: analysis.filter(a => a.severity === 'high').length,

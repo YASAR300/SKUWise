@@ -35,10 +35,10 @@ export default function AnalysisPage() {
     const [selectedAsset, setSelectedAsset] = useState(null);
     const [availableCategories, setAvailableCategories] = useState(["all"]);
 
-    const fetchAnalysis = async () => {
+    const fetchAnalysis = async (signal) => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/analysis?category=${category}`);
+            const res = await fetch(`/api/analysis?category=${category}`, { signal });
             if (res.status === 401) {
                 router.push("/login");
                 return;
@@ -49,6 +49,7 @@ export default function AnalysisPage() {
                 setAvailableCategories(["all", ...result.categories.filter(c => c !== "all")]);
             }
         } catch (err) {
+            if (err.name === 'AbortError') return;
             console.error("Analysis Link Failed:", err);
         } finally {
             setLoading(false);
@@ -59,9 +60,11 @@ export default function AnalysisPage() {
         if (status === "unauthenticated") {
             router.push("/login");
         } else if (status === "authenticated") {
-            fetchAnalysis();
+            const controller = new AbortController();
+            fetchAnalysis(controller.signal);
+            return () => controller.abort();
         }
-    }, [category, status]);
+    }, [category, status, router]);
 
     if (status === "loading") {
         return <div className="min-h-screen flex items-center justify-center font-black uppercase tracking-widest opacity-20">Synchronizing_Neural_Node...</div>;
@@ -89,27 +92,29 @@ export default function AnalysisPage() {
                         </p>
                     </div>
                 </div>
-
-                <div className="flex items-center gap-4">
-                    <div className="flex bg-secondary p-1 rounded-xl border border-border overflow-x-auto no-scrollbar max-w-md">
-                        {availableCategories.map((cat) => (
-                            <button
-                                key={cat}
-                                onClick={() => setCategory(cat)}
-                                className={cn(
-                                    "px-3 py-1.5 rounded-lg text-[8px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
-                                    category === cat ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                                )}
-                            >
-                                {cat}
-                            </button>
-                        ))}
-                    </div>
-                </div>
             </header>
 
+            <div className="overflow-x-auto custom-horizontal-scrollbar">
+                <div className="flex gap-2 pb-2">
+                    {availableCategories.map((cat) => (
+                        <button
+                            key={cat}
+                            onClick={() => setCategory(cat)}
+                            className={cn(
+                                "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border",
+                                (category === cat || (cat !== 'all' && category?.toLowerCase() === cat.toLowerCase()))
+                                    ? "bg-foreground text-background border-foreground shadow-md"
+                                    : "bg-secondary text-muted-foreground border-border hover:border-foreground/20"
+                            )}
+                        >
+                            {cat}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6" >
                     {[1, 2, 3].map(i => <div key={i} className="h-48 bg-secondary/50 rounded-[2rem] animate-pulse" />)}
                 </div>
             ) : data && (
@@ -283,6 +288,22 @@ export default function AnalysisPage() {
                     </div>
                 </div>
             )}
-        </div>
+            <style jsx global>{`
+                .custom-horizontal-scrollbar::-webkit-scrollbar {
+                    height: 2px;
+                }
+                .custom-horizontal-scrollbar::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .custom-horizontal-scrollbar::-webkit-scrollbar-thumb {
+                    background: var(--color-border);
+                    border-radius: 10px;
+                }
+                .custom-horizontal-scrollbar {
+                    scrollbar-width: thin;
+                    scrollbar-color: var(--color-border) transparent;
+                }
+            `}</style>
+        </div >
     );
 }

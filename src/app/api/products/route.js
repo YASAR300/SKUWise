@@ -33,7 +33,7 @@ export async function GET(req) {
                         { category: { contains: search, mode: 'insensitive' } },
                     ]
                 } : {},
-                category !== "all" ? { category: category } : {},
+                category !== "all" ? { category: { equals: category, mode: 'insensitive' } } : {},
             ]
         };
 
@@ -54,7 +54,10 @@ export async function GET(req) {
 
         return NextResponse.json({
             products,
-            categories: categories.map(c => c.category),
+            categories: [...new Set(categories.map(c => {
+                const cat = c.category || "General";
+                return cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
+            }))].sort(),
             pagination: {
                 totalItems,
                 totalPages: Math.ceil(totalItems / limit),
@@ -85,12 +88,13 @@ export async function POST(req) {
 
         let product;
         try {
+            const normalizedCategory = category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
             // Attempt full creation with new fields
             product = await prisma.product.create({
                 data: {
                     userId: session.user.id,
                     name: String(name),
-                    category: String(category),
+                    category: normalizedCategory,
                     price: parseFloat(price),
                     stock: parseInt(stock),
                     cost: cost ? parseFloat(cost) : parseFloat(price) * 0.7,

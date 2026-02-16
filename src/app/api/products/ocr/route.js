@@ -53,7 +53,7 @@ export async function POST(req) {
             contextMessage = "Scan this image of a product list or screenshot.";
         }
 
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
         const prompt = `
             Act as an expert data extractor. ${contextMessage}
@@ -65,18 +65,18 @@ export async function POST(req) {
             - cost (The base unit cost. Look for 'wholesale', 'purchase price', etc. If not found, use 70% of price)
 
             Return ONLY a valid JSON array of objects.
-            Example: [{ "name": "Item A", "category": "General", "price": 100, "stock": 5, "cost": 70 }]
+            Example: [{ "name": "Item B", "category": "Retail", "price": 100, "stock": 5, "cost": 70 }]
         `;
 
         const result = await model.generateContent([prompt, ...contentParts]);
         const responseText = result.response.text();
 
-        const jsonContent = responseText.replace(/```json|```/g, "").trim();
-        const extractedData = JSON.parse(jsonContent);
-
-        // Optional: Pre-inject userId if we were saving here, 
-        // but frontend usually sends back confirmed items to /api/products.
-        // If frontend doesn't save, we are done. If it does, route.js in /api/products is already secured.
+        const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+        if (!jsonMatch) throw new Error("Could not find JSON array in AI response");
+        const extractedData = JSON.parse(jsonMatch[0]).map(item => ({
+            ...item,
+            category: item.category ? (item.category.charAt(0).toUpperCase() + item.category.slice(1).toLowerCase()) : "General"
+        }));
 
         return NextResponse.json({ products: extractedData });
     } catch (error) {
