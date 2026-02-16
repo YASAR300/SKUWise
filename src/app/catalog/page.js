@@ -404,7 +404,7 @@ export default function CatalogPage() {
                                                 </div>
                                                 <input
                                                     type="file"
-                                                    accept="image/*"
+                                                    accept="image/*,application/pdf,.xlsx,.xls,.csv"
                                                     id="ocr-upload"
                                                     className="hidden"
                                                     onChange={(e) => e.target.files[0] && handleOcrScan(e.target.files[0])}
@@ -415,6 +415,7 @@ export default function CatalogPage() {
                                                 >
                                                     Browse Files
                                                 </label>
+                                                <p className="text-[8px] font-black text-muted-foreground/30 uppercase tracking-widest">Supports IMG, PDF, XLSX</p>
                                             </>
                                         )}
                                     </div>
