@@ -64,9 +64,9 @@
 - **AI_Vision_Matrix (v7.0)** - Multimodal asset extraction from Invoices, PDFs, and Excel
 - **Vector Search** - Semantic product search powered by Qdrant
 - **Real-time Analytics** - Instant insights on inventory, margins, and trends
-- **Zero-Freeze Interface** - Robust loading with automatic request cancellation
-- **Multi-Mode AI** - Quick Analysis, Thinking Mode, Deep Research, Shopping Research
-- **PWA & Notifications** - Background service worker for real-time mobile push alerts
+- **Multi-Mode AI** - Quick Analysis, Deep Research, Thinking Mode, Shopping Research
+- **Conversation History** - Save and resume analysis sessions
+- **Data Sources** - Transparent AI responses with source citations
 
 ---
 
@@ -170,25 +170,19 @@
 ## 🏗️ System Architecture
 
 ```mermaid
-graph TB
-    A[User] -->|Interacts| B[Next.js Frontend]
-    B -->|API Calls| C[Next.js API Routes]
-    C -->|Query| D[Prisma ORM]
-    D -->|CRUD| E[PostgreSQL Database]
-    C -->|Embed & Search| F[Qdrant Vector DB]
-    C -->|AI Analysis| G[Google Gemini API]
-    G -->|Embeddings| F
-    G -->|Chat Responses| C
-    C -->|Response| B
-    B -->|Display| A
-    
-    style A fill:#4F46E5,stroke:#333,stroke-width:2px,color:#fff
-    style B fill:#61DAFB,stroke:#333,stroke-width:2px
-    style C fill:#38B2AC,stroke:#333,stroke-width:2px
-    style D fill:#2D3748,stroke:#333,stroke-width:2px,color:#fff
-    style E fill:#336791,stroke:#333,stroke-width:2px,color:#fff
-    style F fill:#DC382C,stroke:#333,stroke-width:2px,color:#fff
-    style G fill:#4285F4,stroke:#333,stroke-width:2px,color:#fff
+flowchart TD
+    User([User Operator]) <-->|Interface| FE[Next.js Frontend]
+    FE <-->|Neural API| BE[API Gateway]
+    BE --> DB[(PostgreSQL Database)]
+    BE --> VDB[(Qdrant Vector DB)]
+    BE <--> AI{Gemini AI Node}
+    AI -.->|Embeddings| VDB
+
+    style FE fill:#4F46E5,stroke:#333,stroke-width:2px,color:#fff
+    style BE fill:#38B2AC,stroke:#333,stroke-width:2px,color:#fff
+    style DB fill:#336791,stroke:#333,stroke-width:2px,color:#fff
+    style VDB fill:#DC382C,stroke:#333,stroke-width:2px,color:#fff
+    style AI fill:#4285F4,stroke:#333,stroke-width:2px,color:#fff
 ```
 
 ### Data Flow
@@ -203,37 +197,30 @@ graph TB
 ### Component Architecture
 
 ```mermaid
-graph LR
-    subgraph Frontend
-        A[Homepage] --> B[Chat Route]
-        B --> C[Conversation Sidebar]
-        B --> D[Message Display]
-        B --> E[Input Component]
+flowchart LR
+    subgraph Frontend["Client Space"]
+        H[Homepage] --> CR[Chat Route]
+        CR --> CS[Sidebar]
+        CR --> MD[Message Display]
     end
     
-    subgraph Backend
-        F[API Routes] --> G["API Chat"]
-        F --> H["API Conversations"]
-        F --> I["API Feedback"]
+    subgraph Backend["API Matrix"]
+        AR[API Routes] --> AC[AI Logic]
+        AR --> DC[Data Flow]
     end
     
-    subgraph Data Layer
-        J[Prisma Client] --> K[PostgreSQL]
-        L[Qdrant Client] --> M[Vector DB]
-        N[Gemini Client] --> O[AI API]
+    subgraph Data["Intelligence Layer"]
+        PR[Prisma] --> PS[(PostgreSQL)]
+        QC[Qdrant] --> VDB[(Vector DB)]
+        GC[Gemini] --> AI_API[Google AI]
     end
     
-    B --> F
-    F --> J
-    F --> L
-    F --> N
-    
-    style A fill:#4F46E5,stroke:#333,stroke-width:2px,color:#fff
-    style B fill:#4F46E5,stroke:#333,stroke-width:2px,color:#fff
-    style F fill:#38B2AC,stroke:#333,stroke-width:2px
-    style J fill:#2D3748,stroke:#333,stroke-width:2px,color:#fff
-    style L fill:#DC382C,stroke:#333,stroke-width:2px,color:#fff
-    style N fill:#4285F4,stroke:#333,stroke-width:2px,color:#fff
+    CR ----> AR
+    AR ----> Data
+
+    style Frontend fill:#4F46E5,stroke:#333,stroke-width:1px,color:#fff
+    style Backend fill:#38B2AC,stroke:#333,stroke-width:1px,color:#fff
+    style Data fill:#2D3748,stroke:#333,stroke-width:1px,color:#fff
 ```
 
 ### Technology Integration
