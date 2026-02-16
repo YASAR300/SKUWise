@@ -61,11 +61,12 @@
 ### 🎯 Key Highlights
 
 - **AI Business Analyst** - ChatGPT-style conversational interface for business queries
+- **AI_Vision_Matrix (v7.0)** - Multimodal asset extraction from Invoices, PDFs, and Excel
 - **Vector Search** - Semantic product search powered by Qdrant
 - **Real-time Analytics** - Instant insights on inventory, margins, and trends
-- **Multi-Mode AI** - Quick Analysis, Deep Research, Thinking Mode, Shopping Research
-- **Conversation History** - Save and resume analysis sessions
-- **Data Sources** - Transparent AI responses with source citations
+- **Zero-Freeze Interface** - Robust loading with automatic request cancellation
+- **Multi-Mode AI** - Quick Analysis, Thinking Mode, Deep Research, Shopping Research
+- **PWA & Notifications** - Background service worker for real-time mobile push alerts
 
 ---
 
@@ -91,10 +92,10 @@
   - Delete old conversations
   - Resume previous sessions
 - **Message Features**:
-  - User messages (right-aligned)
-  - AI responses with Markdown formatting
-  - Data sources display
-  - Clarification suggestions
+  - **Metric Cards** - Automatic heuristic detection of key data patterns
+  - **Strategic Directives** - High-visibility callouts for critical AI recommendations
+  - **Dynamic Citations** - AI responses with source citations
+  - **Clarification suggestions** - Context-aware follow-up question prompts
   - Auto-scroll to latest message
 - **Sidebar Navigation**:
   - Collapsible sidebar
@@ -111,11 +112,12 @@
 
 ### 📊 Analytics & Insights
 
-- **Inventory Analysis** - Stock levels, turnover rates, reorder points
-- **Margin Analysis** - Profit margins, cost breakdowns, pricing optimization
-- **Trend Detection** - Identify high-risk inventory and opportunities
-- **Competitor Comparison** - Compare SKUs with competitors
-- **Predictive Analytics** - Forecast demand and trends
+- **Gap Analysis** - AI-driven diagnosis of market price disparities & revenue leakage
+- **Inventory Liquidity** - Intelligent reorder points and stock velocity tracking
+- **Margin Analysis** - Profit margins, cost breakdowns, and pricing optimization
+- **Category Normalization** - Unified filter system with automated case-insensitive matching
+- **Trend Detection** - Identify high-risk inventory and growth opportunities
+- **Predictive Analytics** - Machine-learning based demand and trend forecasting
 
 ### 🎨 User Experience
 
@@ -772,11 +774,12 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### Phase 1: Enhanced AI Capabilities
 
+- [x] **Conversation Memory** - Context-aware multi-turn dialogue
+- [x] **File Upload (v7.0)** - Analyze PDF/Excel/Images via AI Vision Matrix
+- [x] **Source Citations** - Transparent data-backed AI insights
 - [ ] **Streaming Responses** - Real-time AI response streaming
-- [ ] **Multi-turn Conversations** - Context-aware follow-up questions
-- [ ] **Voice Input** - Speech-to-text for queries
-- [ ] **File Upload** - Analyze CSV/Excel files
-- [ ] **Image Analysis** - Product image recognition
+- [ ] **Voice Input** - Speech-to-text for business queries
+- [ ] **Image Recognition** - Pure visual product identification
 
 ### Phase 2: Advanced Analytics
 
