@@ -38,7 +38,7 @@ export async function POST(request) {
             } else {
                 contextResults = await getContext(query);
                 contextString = contextResults
-                    .map(r => `[Source: ${r.collection}] ${r.content}`)
+                    .map(r => `[Source: ${r.id}] ${r.content}`)
                     .join("\n\n");
             }
         } catch (searchError) {
@@ -55,7 +55,18 @@ export async function POST(request) {
                 if (isInventoryQuery) {
                     const products = await prisma.product.findMany({
                         where: { userId: session.user.id },
-                        take: 100,
+                        take: 10,
+                    });
+
+                    // Add to contextResults so metadata matches
+                    products.forEach(p => {
+                        contextResults.push({
+                            id: p.id,
+                            collection: "products",
+                            content: `${p.name} (${p.category}): ${p.stock} in stock, price ₹${p.price}`,
+                            score: 1.0,
+                            original: p
+                        });
                     });
 
                     const totalProducts = await prisma.product.count({ where: { userId: session.user.id } });
@@ -69,7 +80,7 @@ export async function POST(request) {
 - Low Stock Items: ${products.filter(p => p.reorderPoint && p.stock <= p.reorderPoint).length}
 
 TOP PRODUCTS:
-${products.slice(0, 10).map(p => `- ${p.name}: ${p.stock} units, ₹${p.price}`).join("\n")}`;
+${products.map(p => `- ${p.name}: ${p.stock} units, ₹${p.price} [Source: ${p.id}]`).join("\n")}`;
                 }
             } catch (dbError) {
                 console.error("Database fallback failed:", dbError);

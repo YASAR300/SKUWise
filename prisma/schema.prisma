@@ -18,6 +18,24 @@ model User {
   conversations    Conversation[]
   researchSessions ResearchSession[]
   trainingExamples TrainingExample[]
+  usageRecords     UsageRecord[]
+}
+
+model UsageRecord {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  type            String   // "chat" or "embedding"
+  model           String   // e.g., "gemini-2.0-flash"
+  promptTokens    Int
+  completionTokens Int
+  totalTokens     Int
+  cost            Float    // Calculated cost in USD
+  provider        String   // "google" or "openai"
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model Product {

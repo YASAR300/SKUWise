@@ -76,6 +76,7 @@ export async function getDeepContext(queryText) {
 
                 searchResult.forEach(res => {
                     rawResults.push({
+                        id: res.id,
                         collection,
                         score: res.score,
                         content: res.payload.content,
@@ -106,9 +107,13 @@ export async function getDeepContext(queryText) {
         let contextString = "";
         for (const [productName, profile] of Object.entries(productProfiles)) {
             contextString += `\n=== ${productName} ===\n`;
-            if (profile.product) contextString += `Product Info: ${profile.product.content}\n`;
-            if (profile.reviews.length) contextString += `Reviews: ${profile.reviews.map(r => r.content).join("; ")}\n`;
-            if (profile.sales.length) contextString += `Sales: ${profile.sales.map(s => s.content).join("; ")}\n`;
+            if (profile.product) contextString += `Product Info: ${profile.product.content} [Source: ${profile.product.id}]\n`;
+            if (profile.reviews.length) {
+                contextString += `Reviews: ${profile.reviews.map(r => `${r.content} [Source: ${r.id}]`).join("; ")}\n`;
+            }
+            if (profile.sales.length) {
+                contextString += `Sales: ${profile.sales.map(s => `${s.content} [Source: ${s.id}]`).join("; ")}\n`;
+            }
         }
 
         return { contextString, rawResults };
