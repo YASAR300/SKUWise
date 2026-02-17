@@ -22,6 +22,7 @@ const navLinks = [
     { label: "Catalog", href: "/catalog" },
     { label: "Analysis", href: "/analysis" },
     { label: "Reports", href: "/reports" },
+    { label: "Usage", href: "/usage" },
 ];
 
 export default function Navbar() {

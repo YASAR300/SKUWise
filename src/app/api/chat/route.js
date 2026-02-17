@@ -6,8 +6,11 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
+import { calculateCost, PROVIDERS, MODELS } from "@/lib/usage";
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const geminiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+// Note: gemini-2.0-flash is currently the latest stable for flash
+const geminiModel = genAI.getGenerativeModel({ model: MODELS.GEMINI_2_5_FLASH });
 
 const openai = process.env.OPENAI_API_KEY
     ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -101,19 +104,33 @@ Example: "Your current stock levels for iPhone 15 are healthy [Source: prod_123]
 Append CLARIFYING_QUESTIONS section if needed.`;
 
         let text = "";
+        let usageData = {
+            promptTokens: 0,
+            completionTokens: 0,
+            totalTokens: 0,
+            model: MODELS.GEMINI_2_5_FLASH,
+            provider: PROVIDERS.GOOGLE
+        };
+
         try {
+            console.log(`📡 Executing Gemini [${MODELS.GEMINI_2_5_FLASH}]...`);
             const result = await geminiModel.generateContent(systemPrompt);
             text = result.response.text();
+
+            // Extract usage metadata from Gemini
+            const metadata = result.response.usageMetadata;
+            if (metadata) {
+                usageData.promptTokens = metadata.promptTokenCount || 0;
+                usageData.completionTokens = metadata.candidatesTokenCount || 0;
+                usageData.totalTokens = metadata.totalTokenCount || 0;
+            }
         } catch (geminiError) {
-            console.warn("Gemini failing, using OpenAI...");
-            if (openai) {
-                const oaResult = await openai.chat.completions.create({
-                    model: "gpt-4o-mini",
-                    messages: [{ role: "system", content: systemPrompt }, { role: "user", content: query }],
-                });
-                text = oaResult.choices[0].message.content;
-            } else throw geminiError;
+            console.error("❌ Gemini Call Failed:", geminiError.message);
+            throw new Error(`Critical AI Error (Gemini): ${geminiError.message}`);
         }
+
+        // Calculate cost for this request
+        const estimatedCost = calculateCost(usageData.model, usageData.promptTokens, usageData.completionTokens);
 
         // 4. Extract Clarifications
         let answerText = text;
@@ -137,21 +154,47 @@ Append CLARIFYING_QUESTIONS section if needed.`;
         let userMessageId = null;
         let aiMessageId = null;
 
+        // Perform parallel saves for message and usage record
+        const saveOperations = [
+            // Save usage record
+            prisma.usageRecord.create({
+                data: {
+                    userId: session.user.id,
+                    type: "chat",
+                    model: usageData.model,
+                    promptTokens: usageData.promptTokens,
+                    completionTokens: usageData.completionTokens,
+                    totalTokens: usageData.totalTokens,
+                    cost: estimatedCost,
+                    provider: usageData.provider
+                }
+            })
+        ];
+
         if (conversationId) {
             const conversation = await prisma.conversation.findFirst({
                 where: { id: conversationId, userId: session.user.id }
             });
 
             if (conversation) {
-                const [uMsg, aMsg] = await Promise.all([
+                const msgsPromise = Promise.all([
                     prisma.message.create({ data: { conversationId, role: "user", content: query } }),
                     prisma.message.create({ data: { conversationId, role: "assistant", content: answerText, sources, clarifications } })
-                ]);
-                userMessageId = uMsg.id;
-                aiMessageId = aMsg.id;
-                await prisma.conversation.update({ where: { id: conversationId }, data: { totalQueries: { increment: 1 }, updatedAt: new Date() } });
+                ]).then(([uMsg, aMsg]) => {
+                    userMessageId = uMsg.id;
+                    aiMessageId = aMsg.id;
+                    return [uMsg, aMsg];
+                });
+
+                saveOperations.push(msgsPromise);
+                saveOperations.push(prisma.conversation.update({
+                    where: { id: conversationId },
+                    data: { totalQueries: { increment: 1 }, updatedAt: new Date() }
+                }));
             }
         }
+
+        await Promise.all(saveOperations);
 
         return NextResponse.json({ answer: answerText, clarifications, sources, userMessageId, aiMessageId });
     } catch (error) {
