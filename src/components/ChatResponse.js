@@ -40,10 +40,13 @@ const MetricCard = ({ label, value, icon: Icon, color = "primary" }) => (
     </div>
 );
 
+import SourceCitation from "./SourceCitation";
+import { Info } from "lucide-react";
+
 /**
  * Enhanced Markdown Component
  */
-export default function ChatResponse({ content }) {
+export default function ChatResponse({ content, sources = [], onCitationClick }) {
     // Advanced parsing for specific metrics or data patterns
     // This is a simple heuristic-based approach to pull out key metrics
     const extractMetrics = (text) => {
@@ -65,6 +68,42 @@ export default function ChatResponse({ content }) {
     };
 
     const detectedMetrics = extractMetrics(content);
+
+    // Find the source object for a given ID
+    const findSource = (id) => {
+        return sources.find(s => s.id === id);
+    };
+
+    // Find the index of a source for display
+    const getSourceIndex = (id) => {
+        const idx = sources.findIndex(s => s.id === id);
+        return idx !== -1 ? idx + 1 : "?";
+    };
+
+    // Replace [Source: ID] with a manageable marker for ReactMarkdown
+    // Or just handle it in the text component
+    const renderContentWithCitations = (text) => {
+        if (typeof text !== 'string') return text;
+
+        const parts = text.split(/(\[Source:\s*[^\]]+\])/g);
+        return parts.map((part, i) => {
+            const match = part.match(/\[Source:\s*([^\]]+)\]/);
+            if (match) {
+                const sourceId = match[1].trim();
+                const source = findSource(sourceId);
+                return (
+                    <SourceCitation
+                        key={i}
+                        id={sourceId}
+                        index={getSourceIndex(sourceId)}
+                        score={source?.score || 0.7}
+                        onClick={onCitationClick}
+                    />
+                );
+            }
+            return part;
+        });
+    };
 
     return (
         <div className="chat-response-container space-y-6">
@@ -96,24 +135,27 @@ export default function ChatResponse({ content }) {
             ">
                 <ReactMarkdown
                     components={{
-                        // Custom styling for specific identifiers like "STRATEGIC RECOMMENDATION"
+                        // Custom styling for text to handle citations
                         p: ({ node, children }) => {
-                            const text = children?.[0];
-                            if (typeof text === 'string' && text.includes('STRATEGIC')) {
-                                return (
-                                    <div className="my-6 p-5 rounded-2xl bg-primary/5 border border-primary/10 relative overflow-hidden group">
-                                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
-                                            <TrendingUp className="h-12 w-12 text-primary" />
-                                        </div>
-                                        <div className="flex items-center gap-2 mb-2 text-primary font-bold text-xs uppercase tracking-widest">
-                                            <Target className="h-4 w-4" />
-                                            Strategic Directive
-                                        </div>
-                                        <p className="m-0 text-foreground font-medium relative z-10">{children}</p>
-                                    </div>
-                                );
-                            }
-                            return <p>{children}</p>;
+                            return (
+                                <p>
+                                    {Array.isArray(children) ? (
+                                        children.map((child, i) => {
+                                            if (typeof child === 'string') {
+                                                return <span key={i}>{renderContentWithCitations(child)}</span>;
+                                            }
+                                            return child;
+                                        })
+                                    ) : (
+                                        typeof children === 'string' ? renderContentWithCitations(children) : children
+                                    )}
+                                </p>
+                            );
+                        },
+                        // Custom styling for specific identifiers like "STRATEGIC RECOMMENDATION"
+                        div: ({ node, children }) => {
+                            // This catch-all helps if ReactMarkdown wraps things in divs
+                            return <div>{children}</div>;
                         },
                         // Style headers with accents
                         h2: ({ node, children }) => (
@@ -126,7 +168,18 @@ export default function ChatResponse({ content }) {
                         li: ({ node, children }) => (
                             <li className="list-none flex items-start gap-2 group">
                                 <ArrowUpRight className="h-4 w-4 mt-0.5 text-primary/40 group-hover:text-primary transition-colors flex-shrink-0" />
-                                <span>{children}</span>
+                                <span>
+                                    {Array.isArray(children) ? (
+                                        children.map((child, i) => {
+                                            if (typeof child === 'string') {
+                                                return <span key={i}>{renderContentWithCitations(child)}</span>;
+                                            }
+                                            return child;
+                                        })
+                                    ) : (
+                                        typeof children === 'string' ? renderContentWithCitations(children) : children
+                                    )}
+                                </span>
                             </li>
                         )
                     }}

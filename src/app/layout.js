@@ -3,6 +3,7 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
+import ChatFAB from "@/components/ChatFAB";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { usePathname } from "next/navigation";
 import { Providers } from "@/components/Providers";
@@ -22,6 +23,7 @@ function LayoutContent({ children }) {
             <div className="aurora-bg" />
             <div className="grid-bg" />
             <Navbar />
+            <ChatFAB />
           </>
         )}
         <main className={isChatRoute ? "" : "pt-24 pb-12 px-6"}>

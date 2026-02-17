@@ -81,7 +81,13 @@ ${products.slice(0, 10).map(p => `- ${p.name}: ${p.stock} units, ₹${p.price}`)
         const systemPrompt = `You are SKUWise AI in ${activePersonaPrompt}. 
 CONTEXT: ${contextString || "No data found."}
 QUERY: ${query}
-Provide professional strategic advice. Append CLARIFYING_QUESTIONS section if needed.`;
+
+Provide professional strategic advice. 
+
+CRITICAL: When you use information from the CONTEXT, you MUST cite it using the format [Source: ID] where ID is the source ID provided in the context. 
+Example: "Your current stock levels for iPhone 15 are healthy [Source: prod_123]."
+
+Append CLARIFYING_QUESTIONS section if needed.`;
 
         let text = "";
         try {
@@ -107,7 +113,16 @@ Provide professional strategic advice. Append CLARIFYING_QUESTIONS section if ne
             clarifications = parts[1].trim().split("\n").map(q => q.replace(/^[-\d.]+\s*/, "").trim()).filter(q => q.length > 0);
         }
 
-        // 5. Save and Validate
+        // 5. Format Sources for Frontend
+        const sources = contextResults.map(r => ({
+            id: r.id,
+            type: r.collection,
+            content: r.content,
+            score: r.score,
+            metadata: r.original || {}
+        }));
+
+        // 6. Save and Validate
         let userMessageId = null;
         let aiMessageId = null;
 
@@ -119,7 +134,7 @@ Provide professional strategic advice. Append CLARIFYING_QUESTIONS section if ne
             if (conversation) {
                 const [uMsg, aMsg] = await Promise.all([
                     prisma.message.create({ data: { conversationId, role: "user", content: query } }),
-                    prisma.message.create({ data: { conversationId, role: "assistant", content: answerText, sources: contextResults.map(r => ({ id: r.id, type: r.collection })), clarifications } })
+                    prisma.message.create({ data: { conversationId, role: "assistant", content: answerText, sources, clarifications } })
                 ]);
                 userMessageId = uMsg.id;
                 aiMessageId = aMsg.id;
@@ -127,7 +142,7 @@ Provide professional strategic advice. Append CLARIFYING_QUESTIONS section if ne
             }
         }
 
-        return NextResponse.json({ answer: answerText, clarifications, userMessageId, aiMessageId });
+        return NextResponse.json({ answer: answerText, clarifications, sources, userMessageId, aiMessageId });
     } catch (error) {
         console.error("Chat API Critical Error:", error);
         return NextResponse.json({ error: error.message }, { status: 500 });
