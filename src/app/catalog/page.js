@@ -33,6 +33,60 @@ import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { fetchWithRetry } from "@/lib/api-utils";
+import SkeletonLoader from "@/components/SkeletonLoader";
+import confetti from "canvas-confetti";
+import Portal from "@/components/Portal";
+
+// Move ProductCard outside of CatalogPage component for stability and performance
+const ProductCard = memo(({ product }) => {
+    return (
+        <motion.div
+            layout
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            transition={{ duration: 0.2 }}
+            className="bg-card p-10 rounded-[2.5rem] border border-border hover:border-foreground/20 hover:shadow-2xl hover:-translate-y-2 transition-all group flex flex-col relative overflow-hidden"
+        >
+            <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-10 transition-opacity">
+                <Activity className="h-16 w-16" />
+            </div>
+
+            <div className="flex justify-between items-start mb-12">
+                <div className="h-14 w-14 rounded-2xl bg-secondary flex items-center justify-center text-muted-foreground group-hover:text-foreground group-hover:bg-foreground/5 transition-all">
+                    <ShoppingBag className="h-6 w-6" />
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                    <span className="text-[9px] font-black text-muted-foreground/30 uppercase tracking-[0.2em] font-mono">{product.id.slice(-8)}</span>
+                    <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-20 group-hover:opacity-100 transition-all" />
+                </div>
+            </div>
+
+            <div className="space-y-2 flex-grow">
+                <span className="inline-block px-3 py-1 bg-secondary border border-border rounded-lg text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                    {product.category}
+                </span>
+                <h3 className="text-2xl font-black text-foreground tracking-tighter leading-tight italic group-hover:translate-x-1 transition-transform truncate">{product.name}</h3>
+            </div>
+
+            <div className="mt-12 pt-8 border-t border-border flex justify-between items-end">
+                <div className="space-y-1">
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Valuation</p>
+                    <p className="text-2xl font-black text-foreground tracking-tighter">₹{product.price.toLocaleString()}</p>
+                </div>
+                <div className="text-right space-y-1">
+                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Liquidity</p>
+                    <p className={cn(
+                        "text-sm font-black italic",
+                        product.stock < (product.reorderPoint || 10) ? "text-rose-500" : "text-foreground"
+                    )}>
+                        {product.stock} Units
+                    </p>
+                </div>
+            </div>
+        </motion.div>
+    );
+});
 
 export default function CatalogPage() {
     const { status } = useSession();
@@ -67,55 +121,6 @@ export default function CatalogPage() {
         reorderPoint: "10"
     });
 
-    const ProductCard = memo(({ product }) => {
-        return (
-            <motion.div
-                layout
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                transition={{ duration: 0.2 }}
-                className="bg-card p-10 rounded-[2.5rem] border border-border hover:border-foreground/20 hover:shadow-2xl hover:-translate-y-2 transition-all group flex flex-col relative overflow-hidden"
-            >
-                <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-10 transition-opacity">
-                    <Activity className="h-16 w-16" />
-                </div>
-
-                <div className="flex justify-between items-start mb-12">
-                    <div className="h-14 w-14 rounded-2xl bg-secondary flex items-center justify-center text-muted-foreground group-hover:text-foreground group-hover:bg-foreground/5 transition-all">
-                        <ShoppingBag className="h-6 w-6" />
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                        <span className="text-[9px] font-black text-muted-foreground/30 uppercase tracking-[0.2em] font-mono">{product.id.slice(-8)}</span>
-                        <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-20 group-hover:opacity-100 transition-all" />
-                    </div>
-                </div>
-
-                <div className="space-y-2 flex-grow">
-                    <span className="inline-block px-3 py-1 bg-secondary border border-border rounded-lg text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-                        {product.category}
-                    </span>
-                    <h3 className="text-2xl font-black text-foreground tracking-tighter leading-tight italic group-hover:translate-x-1 transition-transform truncate">{product.name}</h3>
-                </div>
-
-                <div className="mt-12 pt-8 border-t border-border flex justify-between items-end">
-                    <div className="space-y-1">
-                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Valuation</p>
-                        <p className="text-2xl font-black text-foreground tracking-tighter">₹{product.price.toLocaleString()}</p>
-                    </div>
-                    <div className="text-right space-y-1">
-                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Liquidity</p>
-                        <p className={cn(
-                            "text-sm font-black italic",
-                            product.stock < (product.reorderPoint || 10) ? "text-rose-500" : "text-foreground"
-                        )}>
-                            {product.stock} Units
-                        </p>
-                    </div>
-                </div>
-            </motion.div>
-        );
-    });
 
     const fetchProducts = useCallback(async (signal) => {
         if (status !== "authenticated") return;
@@ -226,12 +231,20 @@ export default function CatalogPage() {
 
             await Promise.all(promises);
             fetchProducts();
+
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#6366f1', '#818cf8', '#ffffff']
+            });
+
             setSuccess(true);
             setTimeout(() => {
                 setIsOcrModalOpen(false);
                 setOcrResults([]);
                 setSuccess(false);
-            }, 1500);
+            }, 3000);
         } catch (err) {
             setError("Bulk commit failed.");
         } finally {
@@ -387,7 +400,7 @@ export default function CatalogPage() {
             {loading && products.length === 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                        <div key={i} className="h-64 bg-card border border-border rounded-[2rem] animate-pulse" />
+                        <SkeletonLoader key={i} />
                     ))}
                 </div>
             ) : products.length === 0 ? (
@@ -449,194 +462,199 @@ export default function CatalogPage() {
             {/* AI OCR Scanner Modal */}
             <AnimatePresence>
                 {isOcrModalOpen && (
-                    <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 sm:p-12">
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => !isScanning && !isSubmitting && setIsOcrModalOpen(false)}
-                            className="absolute inset-0 bg-background/80 backdrop-blur-xl"
-                        />
+                    <Portal>
+                        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 sm:p-12">
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => !isScanning && !isSubmitting && setIsOcrModalOpen(false)}
+                                className="absolute inset-0 bg-background/80 backdrop-blur-xl"
+                            />
 
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                            className="relative w-full max-w-4xl bg-card border border-border rounded-[3.5rem] shadow-[0_32px_128px_-16px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col max-h-[90vh]"
-                        >
-                            <div className="p-10 border-b border-border flex items-center justify-between bg-card z-20">
-                                <div className="space-y-1">
-                                    <h2 className="text-xs font-black uppercase tracking-[0.4em] text-foreground flex items-center gap-3">
-                                        <Sparkles className="h-4 w-4 text-primary" /> AI_Vision_Matrix
-                                    </h2>
-                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest italic font-serif">Gemini Powered Data Extraction v7.0</p>
-                                </div>
-                                <button
-                                    onClick={() => setIsOcrModalOpen(false)}
-                                    className="p-3 rounded-full hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
-                                >
-                                    <X className="h-5 w-5" />
-                                </button>
-                            </div>
-
-                            <div className="flex-grow overflow-y-auto p-10 space-y-8 custom-scrollbar">
-                                {ocrResults.length === 0 ? (
-                                    <div
-                                        onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-                                        onDragLeave={() => setDragActive(false)}
-                                        onDrop={(e) => {
-                                            e.preventDefault();
-                                            setDragActive(false);
-                                            if (e.dataTransfer.files[0]) handleOcrScan(e.dataTransfer.files[0]);
-                                        }}
-                                        className={cn(
-                                            "h-[350px] border-2 border-dashed rounded-[2.5rem] flex flex-col items-center justify-center space-y-6 transition-all",
-                                            dragActive ? "border-primary bg-primary/5 scale-[0.98]" : "border-border bg-secondary/20",
-                                            isScanning ? "pointer-events-none" : "hover:bg-secondary/40 hover:border-primary/30"
-                                        )}
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                                className="relative w-full max-w-4xl bg-card border border-border rounded-[3.5rem] shadow-[0_32px_128px_-16px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col max-h-[90vh]"
+                            >
+                                <div className="p-10 border-b border-border flex items-center justify-between bg-card z-20">
+                                    <div className="space-y-1">
+                                        <h2 className="text-xs font-black uppercase tracking-[0.4em] text-foreground flex items-center gap-3">
+                                            <Sparkles className="h-4 w-4 text-primary" /> AI_Vision_Matrix
+                                        </h2>
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest italic font-serif">Gemini Powered Data Extraction v7.0</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setIsOcrModalOpen(false)}
+                                        className="p-3 rounded-full hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
                                     >
-                                        {isScanning ? (
-                                            <div className="flex flex-col items-center gap-6">
-                                                <div className="relative w-20 h-20">
-                                                    <motion.div
-                                                        animate={{ rotate: 360 }}
-                                                        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                                                        className="absolute inset-0 rounded-full border-2 border-primary/20 border-t-primary"
+                                        <X className="h-5 w-5" />
+                                    </button>
+                                </div>
+
+                                <div className="flex-grow overflow-y-auto p-10 space-y-8 custom-scrollbar">
+                                    {ocrResults.length === 0 ? (
+                                        <div
+                                            onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+                                            onDragLeave={() => setDragActive(false)}
+                                            onDrop={(e) => {
+                                                e.preventDefault();
+                                                setDragActive(false);
+                                                if (e.dataTransfer.files[0]) handleOcrScan(e.dataTransfer.files[0]);
+                                            }}
+                                            className={cn(
+                                                "h-[350px] border-2 border-dashed rounded-[2.5rem] flex flex-col items-center justify-center space-y-6 transition-all",
+                                                dragActive ? "border-primary bg-primary/5 scale-[0.98]" : "border-border bg-secondary/20",
+                                                isScanning ? "pointer-events-none" : "hover:bg-secondary/40 hover:border-primary/30"
+                                            )}
+                                        >
+                                            {isScanning ? (
+                                                <div className="flex flex-col items-center gap-6">
+                                                    <div className="relative w-20 h-20">
+                                                        <motion.div
+                                                            animate={{ rotate: 360 }}
+                                                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                                                            className="absolute inset-0 rounded-full border-2 border-primary/20 border-t-primary"
+                                                        />
+                                                        <Scan className="absolute inset-0 m-auto h-8 w-8 text-primary animate-pulse" />
+                                                    </div>
+                                                    <div className="space-y-2 text-center">
+                                                        <p className="text-[10px] font-black uppercase tracking-[0.5em] text-primary animate-pulse">Scanning_Image_Layers...</p>
+                                                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Synthesizing_Multimodal_Data</p>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div className="h-20 w-20 rounded-full bg-secondary flex items-center justify-center">
+                                                        <Upload className="h-8 w-8 text-muted-foreground" />
+                                                    </div>
+                                                    <div className="space-y-2 text-center">
+                                                        <p className="text-foreground font-black uppercase tracking-[0.3em] text-sm italic underline">Input_Required</p>
+                                                        <p className="text-muted-foreground font-bold text-xs uppercase tracking-widest">Drop screenshot, PDF catalog or product sheet</p>
+                                                    </div>
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*,.pdf,.xlsx,.xls"
+                                                        id="ocr-upload"
+                                                        className="hidden"
+                                                        onChange={(e) => e.target.files[0] && handleOcrScan(e.target.files[0])}
                                                     />
-                                                    <Scan className="absolute inset-0 m-auto h-8 w-8 text-primary animate-pulse" />
-                                                </div>
-                                                <div className="space-y-2 text-center">
-                                                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-primary animate-pulse">Scanning_Image_Layers...</p>
-                                                    <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Synthesizing_Multimodal_Data</p>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <>
-                                                <div className="h-20 w-20 rounded-full bg-secondary flex items-center justify-center">
-                                                    <Upload className="h-8 w-8 text-muted-foreground" />
-                                                </div>
-                                                <div className="space-y-2 text-center">
-                                                    <p className="text-foreground font-black uppercase tracking-[0.3em] text-sm italic underline">Input_Required</p>
-                                                    <p className="text-muted-foreground font-bold text-xs uppercase tracking-widest">Drop screenshot, PDF catalog or product sheet</p>
-                                                </div>
-                                                <input
-                                                    type="file"
-                                                    accept="image/*,.pdf,.xlsx,.xls"
-                                                    id="ocr-upload"
-                                                    className="hidden"
-                                                    onChange={(e) => e.target.files[0] && handleOcrScan(e.target.files[0])}
-                                                />
-                                                <label
-                                                    htmlFor="ocr-upload"
-                                                    className="px-8 py-3 bg-foreground text-background rounded-xl font-black text-[10px] uppercase tracking-[0.2em] cursor-pointer hover:scale-105 transition-transform"
-                                                >
-                                                    Browse Files
-                                                </label>
-                                            </>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="space-y-6">
-                                        <div className="p-6 rounded-3xl bg-secondary/50 border border-border">
-                                            <div className="flex items-center justify-between mb-8">
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Assets Identified: {ocrResults.length}</span>
-                                                <button
-                                                    onClick={() => setOcrResults([])}
-                                                    className="text-[9px] font-black uppercase tracking-widest text-destructive hover:underline"
-                                                >
-                                                    Clear Buffer
-                                                </button>
-                                            </div>
-
-                                            <div className="overflow-hidden rounded-2xl border border-border">
-                                                <table className="w-full text-left border-collapse">
-                                                    <thead>
-                                                        <tr className="bg-background border-b border-border">
-                                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Identity</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Sector</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground text-right">Valuation</th>
-                                                            <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground text-right">Qty</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-border/50">
-                                                        {ocrResults.map((p, idx) => (
-                                                            <tr key={idx} className="bg-card hover:bg-secondary/20 transition-colors">
-                                                                <td className="px-6 py-4 text-xs font-bold">{p.name}</td>
-                                                                <td className="px-6 py-4">
-                                                                    <span className="px-2 py-0.5 rounded-md bg-secondary text-[9px] font-black uppercase tracking-widest">{p.category || "General"}</span>
-                                                                </td>
-                                                                <td className="px-6 py-4 text-right font-mono text-xs">₹{p.price.toLocaleString()}</td>
-                                                                <td className="px-6 py-4 text-right font-black italic text-xs">{p.stock}</td>
-                                                            </tr>
-                                                        ))}
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                                    <label
+                                                        htmlFor="ocr-upload"
+                                                        className="px-8 py-3 bg-foreground text-background rounded-xl font-black text-[10px] uppercase tracking-[0.2em] cursor-pointer hover:scale-105 transition-transform"
+                                                    >
+                                                        Browse Files
+                                                    </label>
+                                                </>
+                                            )}
                                         </div>
+                                    ) : (
+                                        <div className="space-y-6">
+                                            <div className="p-6 rounded-3xl bg-secondary/50 border border-border">
+                                                <div className="flex items-center justify-between mb-8">
+                                                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Assets Identified: {ocrResults.length}</span>
+                                                    <button
+                                                        onClick={() => setOcrResults([])}
+                                                        className="text-[9px] font-black uppercase tracking-widest text-destructive hover:underline"
+                                                    >
+                                                        Clear Buffer
+                                                    </button>
+                                                </div>
 
-                                        {success ? (
-                                            <motion.div
-                                                initial={{ opacity: 0, scale: 0.9 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                className="p-8 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col items-center justify-center text-center gap-4 py-20"
-                                            >
-                                                <CheckCircle2 className="h-12 w-12 text-emerald-500" />
-                                                <div className="space-y-1">
-                                                    <p className="text-emerald-500 font-black uppercase tracking-[0.3em] text-sm">Batch_Commit_Success</p>
-                                                    <p className="text-emerald-500/60 font-medium text-xs">All extracted assets have been merged with global catalog.</p>
+                                                <div className="overflow-hidden rounded-2xl border border-border">
+                                                    <table className="w-full text-left border-collapse">
+                                                        <thead>
+                                                            <tr className="bg-background border-b border-border">
+                                                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Identity</th>
+                                                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Sector</th>
+                                                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground text-right">Valuation</th>
+                                                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground text-right">Qty</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-border/50">
+                                                            {ocrResults.map((p, idx) => (
+                                                                <tr key={idx} className="bg-card hover:bg-secondary/20 transition-colors">
+                                                                    <td className="px-6 py-4 text-xs font-bold">{p.name}</td>
+                                                                    <td className="px-6 py-4">
+                                                                        <span className="px-2 py-0.5 rounded-md bg-secondary text-[9px] font-black uppercase tracking-widest">{p.category || "General"}</span>
+                                                                    </td>
+                                                                    <td className="px-6 py-4 text-right font-mono text-xs">₹{p.price.toLocaleString()}</td>
+                                                                    <td className="px-6 py-4 text-right font-black italic text-xs">{p.stock}</td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
                                                 </div>
-                                            </motion.div>
-                                        ) : (
-                                            <div className="flex items-center justify-between p-8 rounded-3xl bg-foreground text-background">
-                                                <div className="space-y-1">
-                                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Ready to Merge</p>
-                                                    <p className="text-sm font-black italic uppercase tracking-tighter">Commit {ocrResults.length} Units to Data-Lake?</p>
-                                                </div>
-                                                <button
-                                                    onClick={handleCommitOcr}
-                                                    disabled={isSubmitting}
-                                                    className="flex items-center gap-3 px-10 py-4 bg-background text-foreground rounded-2xl font-black text-[12px] uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
-                                                >
-                                                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-5 w-5" />}
-                                                    Finalize Merge
-                                                </button>
                                             </div>
-                                        )}
-                                    </div>
-                                )}
 
-                                {error && (
-                                    <div className="p-5 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-[10px] font-black uppercase tracking-widest flex items-center gap-3">
-                                        <AlertCircle className="h-4 w-4" /> Error: {error}
-                                    </div>
-                                )}
-                            </div>
-                        </motion.div>
-                    </div>
+                                            {success ? (
+                                                <motion.div
+                                                    initial={{ opacity: 0, scale: 0.9 }}
+                                                    animate={{ opacity: 1, scale: 1 }}
+                                                    className="p-8 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col items-center justify-center text-center gap-4 py-20"
+                                                >
+                                                    <CheckCircle2 className="h-12 w-12 text-emerald-500" />
+                                                    <div className="space-y-1">
+                                                        <p className="text-emerald-500 font-black uppercase tracking-[0.3em] text-sm">Batch_Commit_Success</p>
+                                                        <p className="text-emerald-500/60 font-medium text-xs">All extracted assets have been merged with global catalog.</p>
+                                                    </div>
+                                                </motion.div>
+                                            ) : (
+                                                <div className="flex items-center justify-between p-8 rounded-3xl bg-foreground text-background">
+                                                    <div className="space-y-1">
+                                                        <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Ready to Merge</p>
+                                                        <p className="text-sm font-black italic uppercase tracking-tighter">Commit {ocrResults.length} Units to Data-Lake?</p>
+                                                    </div>
+                                                    <button
+                                                        onClick={handleCommitOcr}
+                                                        disabled={isSubmitting}
+                                                        className="flex items-center gap-3 px-10 py-4 bg-background text-foreground rounded-2xl font-black text-[12px] uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
+                                                    >
+                                                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-5 w-5" />}
+                                                        Finalize Merge
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {error && (
+                                        <div className="p-5 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-[10px] font-black uppercase tracking-widest flex items-center gap-3">
+                                            <AlertCircle className="h-4 w-4" /> Error: {error}
+                                        </div>
+                                    )}
+                                </div>
+                            </motion.div>
+                        </div>
+                    </Portal>
                 )}
             </AnimatePresence>
 
+            {/* Asset Entry Modal */}
             <AnimatePresence>
                 {isModalOpen && (
-                    <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-12">
-                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => !isSubmitting && setIsModalOpen(false)} className="absolute inset-0 bg-background/80 backdrop-blur-xl" />
-                        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-2xl bg-card border border-border rounded-[3.5rem] shadow-2xl overflow-hidden p-10 pt-16">
-                            <div className="absolute top-8 right-8 cursor-pointer" onClick={() => setIsModalOpen(false)}><X /></div>
-                            <h2 className="text-3xl font-black italic mb-8 uppercase tracking-tighter">New Asset Entry</h2>
-                            <form onSubmit={handleSubmit} className="space-y-6">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <input type="text" placeholder="NAME" required className="p-4 bg-secondary rounded-xl font-bold uppercase text-xs" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
-                                    <input type="text" placeholder="CATEGORY" required className="p-4 bg-secondary rounded-xl font-bold uppercase text-xs" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} />
-                                    <input type="number" placeholder="PRICE" required className="p-4 bg-secondary rounded-xl font-bold uppercase text-xs" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} />
-                                    <input type="number" placeholder="STOCK" required className="p-4 bg-secondary rounded-xl font-bold uppercase text-xs" value={formData.stock} onChange={e => setFormData({ ...formData, stock: e.target.value })} />
-                                </div>
-                                <button type="submit" disabled={isSubmitting} className="w-full p-6 bg-foreground text-background font-black uppercase tracking-widest rounded-2xl flex items-center justify-center gap-2">
-                                    {isSubmitting ? <Loader2 className="animate-spin" /> : <Zap className="h-4 w-4" />} Commit Entity
-                                </button>
-                                {success && <p className="text-emerald-500 font-black text-center text-[10px] uppercase">Entity Successfully Synthesized</p>}
-                            </form>
-                        </motion.div>
-                    </div>
+                    <Portal>
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 sm:p-12">
+                            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => !isSubmitting && setIsModalOpen(false)} className="absolute inset-0 bg-background/80 backdrop-blur-xl" />
+                            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-2xl bg-card border border-border rounded-[3.5rem] shadow-2xl overflow-hidden p-10 pt-16">
+                                <div className="absolute top-8 right-8 cursor-pointer" onClick={() => setIsModalOpen(false)}><X /></div>
+                                <h2 className="text-3xl font-black italic mb-8 uppercase tracking-tighter">New Asset Entry</h2>
+                                <form onSubmit={handleSubmit} className="space-y-6">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <input type="text" placeholder="NAME" required className="p-4 bg-secondary rounded-xl font-bold uppercase text-xs" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
+                                        <input type="text" placeholder="CATEGORY" required className="p-4 bg-secondary rounded-xl font-bold uppercase text-xs" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} />
+                                        <input type="number" placeholder="PRICE" required className="p-4 bg-secondary rounded-xl font-bold uppercase text-xs" value={formData.price} onChange={e => setFormData({ ...formData, price: e.target.value })} />
+                                        <input type="number" placeholder="STOCK" required className="p-4 bg-secondary rounded-xl font-bold uppercase text-xs" value={formData.stock} onChange={e => setFormData({ ...formData, stock: e.target.value })} />
+                                    </div>
+                                    <button type="submit" disabled={isSubmitting} className="w-full p-6 bg-foreground text-background font-black uppercase tracking-widest rounded-2xl flex items-center justify-center gap-2">
+                                        {isSubmitting ? <Loader2 className="animate-spin" /> : <Zap className="h-4 w-4" />} Commit Entity
+                                    </button>
+                                    {success && <p className="text-emerald-500 font-black text-center text-[10px] uppercase">Entity Successfully Synthesized</p>}
+                                </form>
+                            </motion.div>
+                        </div>
+                    </Portal>
                 )}
             </AnimatePresence>
 

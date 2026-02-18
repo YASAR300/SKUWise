@@ -31,24 +31,34 @@ export default function Navbar() {
     const [showUserMenu, setShowUserMenu] = useState(false);
 
     return (
-        <nav className="fixed top-0 left-0 right-0 z-50 px-8 py-6 flex justify-between items-center pointer-events-none">
+        <nav className="fixed top-6 left-1/2 -translate-x-1/2 z-[60] px-8 py-4 flex justify-between items-center w-[95%] max-w-7xl rounded-[2rem] bg-[var(--color-card)]/80 backdrop-blur-2xl border border-border/50 shadow-2xl transition-all duration-500 hover:w-[98%]">
             <div className="flex items-center gap-6 pointer-events-auto">
                 <Link href="/" className="flex items-center gap-2 group">
                     <Circle className="h-5 w-5 fill-primary text-primary transition-transform group-hover:scale-110" />
                     <span className="text-sm font-black tracking-[0.2em] uppercase">SKUWise</span>
                 </Link>
                 <div className="h-px w-8 bg-border" />
-                <div className="flex gap-6">
+                <div className="flex gap-8">
                     {navLinks.map((link) => (
                         <Link
                             key={link.href}
                             href={link.href}
-                            className={cn(
-                                "text-[10px] uppercase tracking-[0.25em] font-black transition-colors",
-                                pathname === link.href ? "text-primary" : "text-muted-foreground hover:text-foreground"
-                            )}
+                            className="relative group py-2"
                         >
-                            {link.label}
+                            <span className={cn(
+                                "text-[10px] uppercase tracking-[0.25em] font-black transition-all duration-300",
+                                pathname === link.href ? "text-primary" : "text-muted-foreground group-hover:text-foreground"
+                            )}>
+                                {link.label}
+                            </span>
+                            {pathname === link.href && (
+                                <motion.div
+                                    layoutId="nav-underline"
+                                    className="absolute -bottom-1 left-0 right-0 h-0.5 bg-primary rounded-full"
+                                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                                />
+                            )}
+                            <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-foreground/10 rounded-full scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
                         </Link>
                     ))}
                 </div>

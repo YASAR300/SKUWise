@@ -12,6 +12,7 @@ import {
     TrendingUp
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import SkeletonLoader from "./SkeletonLoader";
 
 /**
  * UsageDashboard Component
@@ -20,10 +21,16 @@ import { cn } from "@/lib/utils";
 export default function UsageDashboard({ data, isLoading }) {
     if (isLoading) {
         return (
-            <div className="w-full h-96 flex items-center justify-center">
-                <div className="flex flex-col items-center gap-4">
-                    <div className="h-12 w-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-30">Retrieving_Usage_Metrics...</p>
+            <div className="space-y-8 pb-12">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {[1, 2, 3].map(i => <SkeletonLoader key={i} />)}
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <SkeletonLoader className="h-96" />
+                    <div className="space-y-6">
+                        <SkeletonLoader className="h-32" />
+                        <SkeletonLoader className="h-32" />
+                    </div>
                 </div>
             </div>
         );

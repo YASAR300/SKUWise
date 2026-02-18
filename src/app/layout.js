@@ -1,4 +1,5 @@
 "use client";
+import { useState, useEffect } from "react";
 
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -8,6 +9,7 @@ import { ThemeProvider } from "@/components/ThemeProvider";
 import { usePathname } from "next/navigation";
 import { Providers } from "@/components/Providers";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { motion, AnimatePresence } from "framer-motion";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -15,6 +17,19 @@ function LayoutContent({ children }) {
   const pathname = usePathname();
   const isChatRoute = pathname?.startsWith("/chat/");
   const isAuthRoute = pathname === "/login" || pathname === "/register";
+
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      setMousePos({
+        x: (e.clientX / window.innerWidth - 0.5) * 20,
+        y: (e.clientY / window.innerHeight - 0.5) * 20,
+      });
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, []);
 
   return (
     <Providers>
@@ -27,15 +42,32 @@ function LayoutContent({ children }) {
         <ErrorBoundary>
           {!isAuthRoute && !isChatRoute && (
             <>
-              <div className="aurora-bg" />
-              <div className="grid-bg" />
+              <motion.div
+                className="aurora-bg"
+                animate={{ x: mousePos.x, y: mousePos.y }}
+                transition={{ type: "spring", damping: 50, stiffness: 200 }}
+              />
+              <motion.div
+                className="grid-bg"
+                animate={{ x: -mousePos.x * 0.5, y: -mousePos.y * 0.5 }}
+                transition={{ type: "spring", damping: 60, stiffness: 150 }}
+              />
               <Navbar />
               <ChatFAB />
             </>
           )}
-          <main className={isChatRoute ? "" : "pt-24 pb-12 px-6"}>
-            {children}
-          </main>
+          <AnimatePresence mode="wait">
+            <motion.main
+              key={pathname}
+              initial={{ opacity: 0, scale: 0.98, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 1.02, y: -10 }}
+              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              className={isChatRoute ? "" : "pt-24 pb-12 px-6 relative z-10"}
+            >
+              {children}
+            </motion.main>
+          </AnimatePresence>
         </ErrorBoundary>
       </ThemeProvider>
     </Providers>

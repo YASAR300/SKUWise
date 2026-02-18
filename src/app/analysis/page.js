@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { fetchWithRetry } from "@/lib/api-utils";
+import SkeletonLoader from "@/components/SkeletonLoader";
 
 export default function AnalysisPage() {
     const { status } = useSession();
@@ -68,7 +69,12 @@ export default function AnalysisPage() {
     }, [category, status, router]);
 
     if (status === "loading") {
-        return <div className="min-h-screen flex items-center justify-center font-black uppercase tracking-widest opacity-20">Synchronizing_Neural_Node...</div>;
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center space-y-4">
+                <div className="h-16 w-16 rounded-full border-t-2 border-primary animate-spin" />
+                <div className="font-black uppercase tracking-[0.5em] opacity-20 animate-pulse text-[10px]">Synchronizing_Neural_Node...</div>
+            </div>
+        );
     }
 
     return (
@@ -78,21 +84,26 @@ export default function AnalysisPage() {
                 <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--color-border)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-border)_1px,transparent_1px)] bg-[size:48px_48px]"></div>
             </div>
 
-            <header className="relative flex flex-col lg:flex-row lg:items-end justify-between gap-8 border-b border-border pb-10">
-                <div className="space-y-3">
+            <header className="relative flex flex-col lg:flex-row lg:items-end justify-between gap-8 border-b border-border/50 pb-10">
+                <motion.div
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6, ease: "easeOut" }}
+                    className="space-y-3"
+                >
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary border border-border scale-90 origin-left">
-                        <Compass className="h-3 w-3 text-primary" />
-                        <span className="text-[9px] font-black uppercase tracking-[0.3em] text-foreground">Strategic_Intelligence_Matrix</span>
+                        <Compass className="h-3 w-3 text-primary animate-pulse" />
+                        <span className="text-[9px] font-black uppercase tracking-[0.3em] text-foreground opacity-60">Strategic_Intelligence_Matrix</span>
                     </div>
                     <div className="flex flex-col gap-1">
-                        <h1 className="text-4xl font-black text-foreground tracking-tighter leading-none italic">
-                            Gap<span className="text-muted-foreground">Analysis</span>
+                        <h1 className="text-4xl font-black text-foreground tracking-tighter leading-none italic uppercase">
+                            Gap<span className="text-primary">Analysis</span>
                         </h1>
                         <p className="text-base text-muted-foreground font-medium tracking-tight max-w-lg">
-                            Diagnosing competitive disparities and revenue leakage through <span className="text-foreground font-bold">multimodal root-cause synthesis</span>.
+                            Diagnosing competitive disparities and revenue leakage through <span className="text-foreground font-bold underline decoration-primary/30">multimodal root-cause synthesis</span>.
                         </p>
                     </div>
-                </div>
+                </motion.div>
             </header>
 
             <div className="overflow-x-auto custom-horizontal-scrollbar">
@@ -116,7 +127,7 @@ export default function AnalysisPage() {
 
             {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6" >
-                    {[1, 2, 3].map(i => <div key={i} className="h-48 bg-secondary/50 rounded-[2rem] animate-pulse" />)}
+                    {[1, 2, 3].map(i => <SkeletonLoader key={i} />)}
                 </div>
             ) : data && (
                 <div className="space-y-10">

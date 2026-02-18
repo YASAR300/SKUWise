@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
     LayoutDashboard,
     BarChart3,
@@ -41,20 +41,21 @@ export default function UsagePage() {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
                 <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.6 }}
                 >
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                            <Shield className="h-5 w-5" />
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 rounded-xl bg-primary/10 text-primary animate-pulse">
+                            <Shield className="h-4 w-4" />
                         </div>
-                        <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-40">System_Resources</span>
+                        <span className="text-[9px] font-black uppercase tracking-[0.4em] opacity-40">Operational_Metrics_v2.0</span>
                     </div>
-                    <h1 className="text-4xl font-black tracking-tight flex items-center gap-3">
-                        Operational <span className="text-primary italic">Intelligence</span>
+                    <h1 className="text-4xl font-black tracking-tighter flex items-center gap-4 italic uppercase">
+                        Neural <span className="text-primary">Consumption</span>
                     </h1>
-                    <p className="text-muted-foreground mt-2 max-w-xl text-sm font-medium leading-relaxed">
-                        Track neural consumption, API routing performance, and real-time computation costs across your SKUWise infrastructure.
+                    <p className="text-muted-foreground mt-4 max-w-xl text-sm font-medium leading-relaxed opacity-70">
+                        Synchronizing real-time telemetry from across the <span className="text-foreground font-bold">SKUWise compute cluster</span>.
                     </p>
                 </motion.div>
 
