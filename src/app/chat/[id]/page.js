@@ -27,6 +27,8 @@ import { useTheme } from "next-themes";
 import ChatResponse from "@/components/ChatResponse";
 import SourcePreviewModal from "@/components/SourcePreviewModal";
 import SourceManager from "@/components/SourceManager";
+import { fetchWithRetry } from "@/lib/api-utils";
+import SourceCitation from "@/components/SourceCitation";
 
 import { useSession } from "next-auth/react";
 
@@ -91,7 +93,7 @@ export default function ChatPage() {
 
     async function loadConversation() {
         try {
-            const res = await fetch(`/api/conversations/${conversationId}`);
+            const res = await fetchWithRetry(`/api/conversations/${conversationId}`);
             if (res.status === 401) {
                 router.push("/login");
                 return;
@@ -108,7 +110,7 @@ export default function ChatPage() {
 
     async function loadConversations() {
         try {
-            const res = await fetch("/api/conversations");
+            const res = await fetchWithRetry("/api/conversations");
             if (res.status === 401) {
                 router.push("/login");
                 return;
@@ -137,7 +139,7 @@ export default function ChatPage() {
         setIsLoading(true);
 
         try {
-            const res = await fetch("/api/chat", {
+            const res = await fetchWithRetry("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

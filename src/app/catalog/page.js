@@ -32,6 +32,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { fetchWithRetry } from "@/lib/api-utils";
 
 export default function CatalogPage() {
     const { status } = useSession();
@@ -78,7 +79,7 @@ export default function CatalogPage() {
                 sortBy,
                 sortOrder
             });
-            const res = await fetch(`/api/products?${params.toString()}`, { signal });
+            const res = await fetchWithRetry(`/api/products?${params.toString()}`, { signal });
 
             if (res.status === 401) {
                 router.push("/login");
@@ -137,7 +138,7 @@ export default function CatalogPage() {
         formData.append("file", file);
 
         try {
-            const res = await fetch("/api/products/ocr", {
+            const res = await fetchWithRetry("/api/products/ocr", {
                 method: "POST",
                 body: formData,
             });
@@ -166,7 +167,7 @@ export default function CatalogPage() {
         setIsSubmitting(true);
         try {
             const promises = ocrResults.map(p =>
-                fetch("/api/products", {
+                fetchWithRetry("/api/products", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(p),
@@ -194,7 +195,7 @@ export default function CatalogPage() {
         setError(null);
 
         try {
-            const res = await fetch("/api/products", {
+            const res = await fetchWithRetry("/api/products", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(formData),

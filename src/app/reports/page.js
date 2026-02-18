@@ -26,6 +26,7 @@ import {
     ExternalLink
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { fetchWithRetry } from "@/lib/api-utils";
 
 const REPORT_CATEGORIES = [
     {
@@ -111,7 +112,7 @@ export default function ReportsPage() {
         setError(null);
 
         try {
-            const res = await fetch("/api/reports", {
+            const res = await fetchWithRetry("/api/reports", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ type, format: "json", filters: {} }),
@@ -134,7 +135,7 @@ export default function ReportsPage() {
     async function handleExport(format) {
         if (!selectedType) return;
         try {
-            const res = await fetch("/api/reports", {
+            const res = await fetchWithRetry("/api/reports", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ type: selectedType, format, filters: {} }),

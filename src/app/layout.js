@@ -7,6 +7,7 @@ import ChatFAB from "@/components/ChatFAB";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { usePathname } from "next/navigation";
 import { Providers } from "@/components/Providers";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -17,19 +18,26 @@ function LayoutContent({ children }) {
 
   return (
     <Providers>
-      <div className="relative min-h-screen">
-        {!isChatRoute && !isAuthRoute && (
-          <>
-            <div className="aurora-bg" />
-            <div className="grid-bg" />
-            <Navbar />
-            <ChatFAB />
-          </>
-        )}
-        <main className={isChatRoute ? "" : "pt-24 pb-12 px-6"}>
-          {children}
-        </main>
-      </div>
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+        disableTransitionOnChange
+      >
+        <ErrorBoundary>
+          {!isAuthRoute && !isChatRoute && (
+            <>
+              <div className="aurora-bg" />
+              <div className="grid-bg" />
+              <Navbar />
+              <ChatFAB />
+            </>
+          )}
+          <main className={isChatRoute ? "" : "pt-24 pb-12 px-6"}>
+            {children}
+          </main>
+        </ErrorBoundary>
+      </ThemeProvider>
     </Providers>
   );
 }

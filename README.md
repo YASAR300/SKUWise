@@ -6,6 +6,8 @@
 
 **Every product decision, intelligently guided.**
 
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Render-10B981?style=for-the-badge&logo=render&logoColor=white)](https://skuwise.onrender.com/)
+
 [![Next.js](https://img.shields.io/badge/Next.js-15.1-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19.0-61DAFB?style=flat-square&logo=react)](https://reactjs.org/)
 [![Prisma](https://img.shields.io/badge/Prisma-6.2-2D3748?style=flat-square&logo=prisma)](https://www.prisma.io/)

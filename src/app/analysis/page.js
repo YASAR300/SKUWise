@@ -25,6 +25,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { fetchWithRetry } from "@/lib/api-utils";
 
 export default function AnalysisPage() {
     const { status } = useSession();
@@ -38,7 +39,7 @@ export default function AnalysisPage() {
     const fetchAnalysis = async (signal) => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/analysis?category=${category}`, { signal });
+            const res = await fetchWithRetry(`/api/analysis?category=${category}`, { signal });
             if (res.status === 401) {
                 router.push("/login");
                 return;

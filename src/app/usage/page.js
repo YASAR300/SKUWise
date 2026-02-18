@@ -11,6 +11,7 @@ import {
     Shield
 } from "lucide-react";
 import UsageDashboard from "@/components/UsageDashboard";
+import { fetchWithRetry } from "@/lib/api-utils";
 
 export default function UsagePage() {
     const [usageData, setUsageData] = useState(null);
@@ -19,7 +20,7 @@ export default function UsagePage() {
     const fetchUsage = async () => {
         setIsLoading(true);
         try {
-            const res = await fetch("/api/usage");
+            const res = await fetchWithRetry("/api/usage");
             if (res.ok) {
                 const data = await res.json();
                 setUsageData(data);
