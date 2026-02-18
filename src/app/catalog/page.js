@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, memo } from "react";
 import {
     Package,
     Search,
@@ -65,6 +65,56 @@ export default function CatalogPage() {
         stock: "",
         cost: "",
         reorderPoint: "10"
+    });
+
+    const ProductCard = memo(({ product }) => {
+        return (
+            <motion.div
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.2 }}
+                className="bg-card p-10 rounded-[2.5rem] border border-border hover:border-foreground/20 hover:shadow-2xl hover:-translate-y-2 transition-all group flex flex-col relative overflow-hidden"
+            >
+                <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-10 transition-opacity">
+                    <Activity className="h-16 w-16" />
+                </div>
+
+                <div className="flex justify-between items-start mb-12">
+                    <div className="h-14 w-14 rounded-2xl bg-secondary flex items-center justify-center text-muted-foreground group-hover:text-foreground group-hover:bg-foreground/5 transition-all">
+                        <ShoppingBag className="h-6 w-6" />
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                        <span className="text-[9px] font-black text-muted-foreground/30 uppercase tracking-[0.2em] font-mono">{product.id.slice(-8)}</span>
+                        <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-20 group-hover:opacity-100 transition-all" />
+                    </div>
+                </div>
+
+                <div className="space-y-2 flex-grow">
+                    <span className="inline-block px-3 py-1 bg-secondary border border-border rounded-lg text-[9px] font-black uppercase tracking-widest text-muted-foreground">
+                        {product.category}
+                    </span>
+                    <h3 className="text-2xl font-black text-foreground tracking-tighter leading-tight italic group-hover:translate-x-1 transition-transform truncate">{product.name}</h3>
+                </div>
+
+                <div className="mt-12 pt-8 border-t border-border flex justify-between items-end">
+                    <div className="space-y-1">
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Valuation</p>
+                        <p className="text-2xl font-black text-foreground tracking-tighter">₹{product.price.toLocaleString()}</p>
+                    </div>
+                    <div className="text-right space-y-1">
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Liquidity</p>
+                        <p className={cn(
+                            "text-sm font-black italic",
+                            product.stock < (product.reorderPoint || 10) ? "text-rose-500" : "text-foreground"
+                        )}>
+                            {product.stock} Units
+                        </p>
+                    </div>
+                </div>
+            </motion.div>
+        );
     });
 
     const fetchProducts = useCallback(async (signal) => {
@@ -362,53 +412,8 @@ export default function CatalogPage() {
                     className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
                 >
                     <AnimatePresence mode="popLayout">
-                        {products.map((product, idx) => (
-                            <motion.div
-                                key={product.id}
-                                layout
-                                initial={{ opacity: 0, scale: 0.9 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.9 }}
-                                transition={{ duration: 0.2 }}
-                                className="bg-card p-10 rounded-[2.5rem] border border-border hover:border-foreground/20 hover:shadow-2xl hover:-translate-y-2 transition-all group flex flex-col relative overflow-hidden"
-                            >
-                                <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-10 transition-opacity">
-                                    <Activity className="h-16 w-16" />
-                                </div>
-
-                                <div className="flex justify-between items-start mb-12">
-                                    <div className="h-14 w-14 rounded-2xl bg-secondary flex items-center justify-center text-muted-foreground group-hover:text-foreground group-hover:bg-foreground/5 transition-all">
-                                        <ShoppingBag className="h-6 w-6" />
-                                    </div>
-                                    <div className="flex flex-col items-end gap-1">
-                                        <span className="text-[9px] font-black text-muted-foreground/30 uppercase tracking-[0.2em] font-mono">{product.id.slice(-8)}</span>
-                                        <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-20 group-hover:opacity-100 transition-all" />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2 flex-grow">
-                                    <span className="inline-block px-3 py-1 bg-secondary border border-border rounded-lg text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-                                        {product.category}
-                                    </span>
-                                    <h3 className="text-2xl font-black text-foreground tracking-tighter leading-tight italic group-hover:translate-x-1 transition-transform truncate">{product.name}</h3>
-                                </div>
-
-                                <div className="mt-12 pt-8 border-t border-border flex justify-between items-end">
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Valuation</p>
-                                        <p className="text-2xl font-black text-foreground tracking-tighter">₹{product.price.toLocaleString()}</p>
-                                    </div>
-                                    <div className="text-right space-y-1">
-                                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Liquidity</p>
-                                        <p className={cn(
-                                            "text-sm font-black italic",
-                                            product.stock < (product.reorderPoint || 10) ? "text-rose-500" : "text-foreground"
-                                        )}>
-                                            {product.stock} Units
-                                        </p>
-                                    </div>
-                                </div>
-                            </motion.div>
+                        {products.map((product) => (
+                            <ProductCard key={product.id} product={product} />
                         ))}
                     </AnimatePresence>
                 </motion.div>

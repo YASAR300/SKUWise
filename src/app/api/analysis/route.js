@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import * as cache from "@/lib/cache";
+
+const CACHE_TTL = 120000; // 2 minutes for analysis
 
 export async function GET(req) {
     try {
@@ -12,6 +15,10 @@ export async function GET(req) {
 
         const { searchParams } = new URL(req.url);
         const category = searchParams.get("category") || "all";
+        const cacheKey = `analysis_${session.user.id}_${category}`;
+
+        const cachedResponse = cache.get(cacheKey);
+        if (cachedResponse) return NextResponse.json(cachedResponse);
 
         const where = {
             userId: session.user.id,
@@ -76,7 +83,7 @@ export async function GET(req) {
             };
         });
 
-        return NextResponse.json({
+        const responseData = {
             analysis,
             categories: [...new Set(userCategories.map(c => {
                 const cat = c.category || "General";
@@ -89,7 +96,10 @@ export async function GET(req) {
                     ? (analysis.reduce((sum, a) => sum + parseFloat(a.priceGap), 0) / analysis.length).toFixed(2)
                     : 0
             }
-        });
+        };
+
+        cache.set(cacheKey, responseData, CACHE_TTL);
+        return NextResponse.json(responseData);
     } catch (error) {
         console.error("Analysis API Error:", error);
         return NextResponse.json({ error: error.message }, { status: 500 });

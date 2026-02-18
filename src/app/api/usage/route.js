@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import * as cache from "@/lib/cache";
+
+const CACHE_TTL = 300000; // 5 minutes for usage
 
 export async function GET() {
     try {
@@ -15,8 +18,11 @@ export async function GET() {
             where: { userId: session.user.id },
             orderBy: { createdAt: "desc" },
         });
+        const cacheKey = `usage_${session.user.id}`;
+        const cachedResponse = cache.get(cacheKey);
+        if (cachedResponse) return NextResponse.json(cachedResponse);
 
-        // Calculate aggregates
+        // ... calculate aggregates ...
         const totalTokens = usageRecords.reduce((sum, r) => sum + r.totalTokens, 0);
         const totalCost = usageRecords.reduce((sum, r) => sum + r.cost, 0);
 
@@ -38,7 +44,7 @@ export async function GET() {
             return acc;
         }, {});
 
-        return NextResponse.json({
+        const responseData = {
             aggregates: {
                 totalTokens,
                 totalCost,
@@ -50,7 +56,10 @@ export async function GET() {
                 .sort((a, b) => a.date.localeCompare(b.date))
                 .slice(-30),
             recentRecords: usageRecords.slice(0, 10)
-        });
+        };
+
+        cache.set(cacheKey, responseData, CACHE_TTL);
+        return NextResponse.json(responseData);
     } catch (error) {
         console.error("Fetch Usage Error:", error);
         return NextResponse.json({ error: error.message }, { status: 500 });

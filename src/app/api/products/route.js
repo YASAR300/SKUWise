@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import * as cache from "@/lib/cache";
+
+const CACHE_TTL = 60000; // 1 minute for products
 
 export async function GET(req) {
     try {
@@ -11,6 +14,10 @@ export async function GET(req) {
         }
 
         const { searchParams } = new URL(req.url);
+        const cacheKey = `products_${session.user.id}_${searchParams.toString()}`;
+
+        const cachedResponse = cache.get(cacheKey);
+        if (cachedResponse) return NextResponse.json(cachedResponse);
 
         // Pagination params
         const page = parseInt(searchParams.get("page") || "1");
@@ -43,6 +50,15 @@ export async function GET(req) {
                 orderBy: { [sortBy]: sortOrder },
                 take: limit,
                 skip: skip,
+                select: {
+                    id: true,
+                    name: true,
+                    category: true,
+                    price: true,
+                    stock: true,
+                    updatedAt: true,
+                    reorderPoint: true
+                }
             }),
             prisma.product.count({ where }),
             prisma.product.findMany({
@@ -52,7 +68,7 @@ export async function GET(req) {
             })
         ]);
 
-        return NextResponse.json({
+        const responseData = {
             products,
             categories: [...new Set(categories.map(c => {
                 const cat = c.category || "General";
@@ -64,7 +80,10 @@ export async function GET(req) {
                 currentPage: page,
                 limit
             }
-        });
+        };
+
+        cache.set(cacheKey, responseData, CACHE_TTL);
+        return NextResponse.json(responseData);
     } catch (error) {
         console.error("Fetch Products Error:", error);
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -116,6 +135,9 @@ export async function POST(req) {
                 }
             });
         }
+
+        // Invalidate products cache for this user
+        cache.clear();
 
         return NextResponse.json(product);
     } catch (error) {

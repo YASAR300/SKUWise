@@ -54,6 +54,10 @@ model Product {
   reviews         Review[]
   salesData       SalesData[]
   competitorData  CompetitorData[]
+
+  @@index([userId])
+  @@index([category])
+  @@index([updatedAt])
 }
 
 model Review {
@@ -75,6 +79,8 @@ model CompetitorData {
   features        Json?    
   rating          Float?
   updatedAt       DateTime @updatedAt
+
+  @@index([productId])
 }
 
 model SalesData {
@@ -84,6 +90,9 @@ model SalesData {
   unitsSold   Int
   revenue     Float
   date        DateTime @default(now())
+
+  @@index([productId])
+  @@index([date])
 }
 
 model ResearchSession {
