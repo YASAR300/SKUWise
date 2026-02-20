@@ -28,7 +28,7 @@ import {
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, Suspense } from "react";
 import SourceManager from "@/components/SourceManager";
 import SourcePreviewModal from "@/components/SourcePreviewModal";
 
@@ -387,8 +387,16 @@ function ChatLayoutInner({ children }) {
 
 export default function RootChatLayout({ children }) {
     return (
-        <ChatProvider>
-            <ChatLayoutInner>{children}</ChatLayoutInner>
-        </ChatProvider>
+        <Suspense fallback={
+            <div className="h-screen w-full flex items-center justify-center">
+                <div className="text-[10px] font-black uppercase tracking-[0.3em] opacity-20 animate-pulse">
+                    Initializing_Cognitive_Core...
+                </div>
+            </div>
+        }>
+            <ChatProvider>
+                <ChatLayoutInner>{children}</ChatLayoutInner>
+            </ChatProvider>
+        </Suspense>
     );
 }
