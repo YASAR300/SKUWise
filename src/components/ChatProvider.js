@@ -1,0 +1,314 @@
+"use client";
+
+import { createContext, useContext, useState, useEffect, useRef } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { fetchWithRetry } from "@/lib/api-utils";
+
+const ChatContext = createContext();
+
+export function ChatProvider({ children }) {
+    const { status } = useSession();
+    const params = useParams();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const conversationId = params?.id;
+    const initialQuery = searchParams?.get("query");
+
+    // Shared State
+    const [messages, setMessages] = useState([]);
+    const [input, setInput] = useState("");
+    const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+    const [isSending, setIsSending] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [conversation, setConversation] = useState(null);
+    const [conversations, setConversations] = useState([]);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [showSidebar, setShowSidebar] = useState(true);
+    const [showSettings, setShowSettings] = useState(false);
+    const [showSourcePanel, setShowSourcePanel] = useState(false);
+    const [selectedSource, setSelectedSource] = useState(null);
+    const [isSourceModalOpen, setIsSourceModalOpen] = useState(false);
+
+    // Voice & File State
+    const [isRecording, setIsRecording] = useState(false);
+    const [isSpeaking, setIsSpeaking] = useState(false);
+    const [attachments, setAttachments] = useState([]);
+
+    const hasInitialQuerySent = useRef(false);
+    const recognitionRef = useRef(null);
+    const isRecordingRef = useRef(false);
+    const messagesEndRef = useRef(null);
+    const fileInputRef = useRef(null);
+
+    // Initial Auth
+    useEffect(() => {
+        if (status === "authenticated") {
+            loadConversations();
+        }
+    }, [status]);
+
+    // Re-load when ID changes
+    useEffect(() => {
+        if (status === "authenticated" && conversationId) {
+            loadConversation();
+        } else if (!conversationId) {
+            setMessages([]);
+            setConversation(null);
+        }
+    }, [conversationId, status]);
+
+    // Handle initial query
+    useEffect(() => {
+        // We only send if we have a query, haven't sent it yet, and have an ID
+        if (initialQuery && !hasInitialQuerySent.current && conversationId) {
+            // Wait for history to finish loading so we don't double-send or overwrite
+            if (isHistoryLoading) return;
+
+            // If messages are empty, it's a new chat, proceed
+            if (messages.length === 0) {
+                hasInitialQuerySent.current = true;
+
+                // Remove query from URL immediately to prevent reload triggers
+                const params = new URLSearchParams(searchParams.toString());
+                params.delete('query');
+                router.replace(`/chat/${conversationId}${params.toString() ? `?${params.toString()}` : ''}`, { scroll: false });
+
+                let pendingAttachments = [];
+                try {
+                    const stored = sessionStorage.getItem('pending_attachments');
+                    if (stored) {
+                        pendingAttachments = JSON.parse(stored);
+                        sessionStorage.removeItem('pending_attachments');
+                    }
+                } catch (e) {
+                    console.error("Pending attachments parse error:", e);
+                }
+                handleSendMessage(initialQuery, pendingAttachments);
+            }
+        }
+    }, [initialQuery, messages.length, conversationId, isHistoryLoading, router, searchParams]);
+
+    // Data Loaders
+    async function loadConversation() {
+        if (!conversationId) return;
+        setIsHistoryLoading(true);
+        try {
+            const res = await fetchWithRetry(`/api/conversations/${conversationId}`);
+            if (res.ok) {
+                const data = await res.json();
+                setConversation(data.conversation);
+                // Important: setMessages must happen before setIsHistoryLoading(false)
+                setMessages(data.conversation.messages || []);
+            }
+        } catch (error) {
+            console.error("Failed to load conversation:", error);
+        } finally {
+            setIsHistoryLoading(false);
+        }
+    }
+
+    async function loadConversations() {
+        try {
+            const res = await fetchWithRetry("/api/conversations");
+            if (res.ok) {
+                const data = await res.json();
+                setConversations(data.conversations || []);
+            }
+        } catch (error) {
+            console.error("Failed to load conversations:", error);
+        }
+    }
+
+    // Handlers
+    async function handleSendMessage(text = input, existingAttachments = []) {
+        if (!text.trim() || isSending || !conversationId) return;
+
+        const userMessage = {
+            id: Date.now(),
+            role: "user",
+            content: text,
+            createdAt: new Date().toISOString(),
+        };
+
+        const filePromises = attachments.map(file => new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve({
+                inlineData: { data: reader.result.split(',')[1], mimeType: file.type }
+            });
+            reader.readAsDataURL(file);
+        }));
+
+        const uploadedFileData = await Promise.all(filePromises);
+        const fileData = [...uploadedFileData, ...existingAttachments.map(batch => ({
+            inlineData: { data: batch.data, mimeType: batch.mimeType }
+        }))];
+
+        setMessages((prev) => [...prev, userMessage]);
+        setInput("");
+        setAttachments([]);
+        setIsSending(true);
+
+        try {
+            const res = await fetch("/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    query: text,
+                    mode: "quick",
+                    conversationId,
+                    attachments: fileData
+                }),
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                setMessages((prev) => [...prev, {
+                    id: Date.now() + 1,
+                    role: "assistant",
+                    content: data.answer,
+                    sources: data.sources || [],
+                    clarifications: data.clarifications || [],
+                    createdAt: new Date().toISOString(),
+                }]);
+            }
+        } catch (error) {
+            console.error("Chat error:", error);
+        } finally {
+            setIsSending(false);
+        }
+    }
+
+    async function handleNewChat() {
+        try {
+            const res = await fetch("/api/conversations", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ title: "Strategic Analysis", mode: "quick" }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                await loadConversations();
+                router.push(`/chat/${data.conversation.id}`);
+            }
+        } catch (err) {
+            console.error("New chat failed:", err);
+        }
+    }
+
+    async function handleDeleteConversation(id) {
+        if (isDeleting) return;
+        if (!confirm("Delete this session?")) return;
+        setIsDeleting(true);
+        try {
+            const res = await fetch(`/api/conversations/${id}`, { method: "DELETE" });
+            if (res.ok) {
+                await loadConversations();
+                if (id === conversationId) router.push("/chat");
+            }
+        } catch (err) {
+            console.error("Delete failed:", err);
+        } finally {
+            setIsDeleting(false);
+        }
+    }
+
+    const handleSpeak = (text) => {
+        if (typeof window === "undefined" || !window.speechSynthesis) return;
+        if (isSpeaking) {
+            window.speechSynthesis.cancel();
+            setIsSpeaking(false);
+            return;
+        }
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.onstart = () => setIsSpeaking(true);
+        utterance.onend = () => setIsSpeaking(false);
+        utterance.onerror = () => setIsSpeaking(false);
+        window.speechSynthesis.speak(utterance);
+    };
+
+    const stopSpeaking = () => {
+        if (typeof window !== "undefined" && window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+            setIsSpeaking(false);
+        }
+    };
+
+    const toggleRecording = () => {
+        if (!recognitionRef.current) return;
+        if (isRecordingRef.current) {
+            isRecordingRef.current = false;
+            recognitionRef.current.stop();
+            setIsRecording(false);
+        } else {
+            try {
+                recognitionRef.current.start();
+            } catch (err) {
+                console.error("Mic start failed:", err);
+            }
+        }
+    };
+
+    const handleFileChange = (e) => {
+        const files = Array.from(e.target.files);
+        setAttachments(prev => [...prev, ...files]);
+    };
+
+    const removeAttachment = (index) => {
+        setAttachments(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const handleSourceClick = (sourceId) => {
+        const allSources = messages.flatMap(m => m.sources || []);
+        const source = allSources.find(s => s.id === sourceId);
+        if (source) {
+            setSelectedSource(source);
+            setIsSourceModalOpen(true);
+        }
+    };
+
+    const value = {
+        messages, setMessages,
+        input, setInput,
+        isDeleting, setIsDeleting,
+        conversation, setConversation,
+        conversations, setConversations,
+        searchQuery, setSearchQuery,
+        showSidebar, setShowSidebar,
+        showSettings, setShowSettings,
+        showSourcePanel, setShowSourcePanel,
+        selectedSource, setSelectedSource,
+        isSourceModalOpen, setIsSourceModalOpen,
+        isRecording, setIsRecording,
+        isSpeaking, setIsSpeaking,
+        attachments, setAttachments,
+        conversationId,
+        loadConversation,
+        loadConversations,
+        isHistoryLoading,
+        isSending,
+        isLoading: isHistoryLoading || isSending,
+        handleSendMessage,
+        handleNewChat,
+        handleDeleteConversation,
+        handleSpeak,
+        stopSpeaking,
+        toggleRecording,
+        handleFileChange,
+        removeAttachment,
+        handleSourceClick,
+        messagesEndRef,
+        fileInputRef,
+        recognitionRef,
+        isRecordingRef
+    };
+
+    return (
+        <ChatContext.Provider value={value}>
+            {children}
+        </ChatContext.Provider>
+    );
+}
+
+export const useChat = () => useContext(ChatContext);

@@ -23,7 +23,10 @@ import {
   Palette,
   HelpCircle,
   MoreHorizontal,
-  ChevronRight
+  ChevronRight,
+  MicOff,
+  X,
+  FileCode
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useSession } from "next-auth/react";
@@ -54,6 +57,13 @@ export default function Home() {
   const [showModeMenu, setShowModeMenu] = useState(false);
   const menuRef = useRef(null);
 
+  // Voice & File State
+  const [isRecording, setIsRecording] = useState(false);
+  const [attachments, setAttachments] = useState([]);
+  const fileInputRef = useRef(null);
+  const recognitionRef = useRef(null);
+  const isRecordingRef = useRef(false);
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
@@ -69,6 +79,51 @@ export default function Home() {
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Initialize Speech Recognition
+  useEffect(() => {
+    if (typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition)) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onstart = () => {
+        setIsRecording(true);
+        isRecordingRef.current = true;
+      };
+
+      recognitionRef.current.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map(result => result[0])
+          .map(result => result.transcript)
+          .join('');
+        setQuery(transcript);
+      };
+
+      recognitionRef.current.onend = () => {
+        if (isRecordingRef.current) {
+          try {
+            recognitionRef.current.start();
+          } catch (e) {
+            console.error("Auto-restart failed:", e);
+            setIsRecording(false);
+            isRecordingRef.current = false;
+          }
+        } else {
+          setIsRecording(false);
+        }
+      };
+
+      recognitionRef.current.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        if (event.error === 'no-speech') return;
+        setIsRecording(false);
+        isRecordingRef.current = false;
+      };
+    }
   }, []);
 
   // Disable scroll on homepage
@@ -98,6 +153,24 @@ export default function Home() {
     setShowModeMenu(false);
 
     try {
+      // Prepare attachments
+      const filePromises = attachments.map(file => new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve({
+          name: file.name,
+          mimeType: file.type,
+          data: reader.result.split(',')[1]
+        });
+        reader.readAsDataURL(file);
+      }));
+
+      const fileData = await Promise.all(filePromises);
+
+      // Store attachments in sessionStorage to pick up on chat page
+      if (fileData.length > 0) {
+        sessionStorage.setItem('pending_attachments', JSON.stringify(fileData));
+      }
+
       // Create conversation
       const res = await fetch("/api/conversations", {
         method: "POST",
@@ -122,6 +195,34 @@ export default function Home() {
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  const toggleRecording = () => {
+    if (!recognitionRef.current) {
+      alert("Speech recognition is not supported in this browser.");
+      return;
+    }
+
+    if (isRecordingRef.current) {
+      isRecordingRef.current = false;
+      recognitionRef.current.stop();
+      setIsRecording(false);
+    } else {
+      try {
+        recognitionRef.current.start();
+      } catch (err) {
+        console.error("Failed to start recognition:", err);
+      }
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    setAttachments(prev => [...prev, ...files]);
+  };
+
+  const removeAttachment = (index) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
   };
 
   const currentMode = aiModes.find(m => m.id === mode) || aiModes[0];
@@ -276,19 +377,32 @@ export default function Home() {
 
               {/* Right Actions */}
               <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  className="hidden"
+                  multiple
+                  accept="image/*,.pdf,.xlsx,.xls,.csv"
+                />
                 <button
                   type="button"
+                  onClick={() => fileInputRef.current?.click()}
                   className="p-2 hover:bg-secondary/70 rounded-lg transition-colors"
                   title="Add files"
                 >
-                  <Paperclip className="h-5 w-5 text-muted-foreground" />
+                  <Paperclip className={cn("h-5 w-5", attachments.length > 0 ? "text-primary" : "text-muted-foreground")} />
                 </button>
                 <button
                   type="button"
-                  className="p-2 hover:bg-secondary/70 rounded-lg transition-colors"
-                  title="Voice input"
+                  onClick={toggleRecording}
+                  className={cn(
+                    "p-2 rounded-lg transition-all",
+                    isRecording ? "bg-destructive/10 text-destructive animate-pulse" : "hover:bg-secondary/70 text-muted-foreground"
+                  )}
+                  title={isRecording ? "Stop recording" : "Voice input"}
                 >
-                  <Mic className="h-5 w-5 text-muted-foreground" />
+                  {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                 </button>
                 <button
                   type="submit"
@@ -309,16 +423,27 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Current Mode Indicator */}
-            {!showModeMenu && (() => {
-              const Icon = currentMode.icon;
-              return (
-                <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-                  <Icon className="h-4 w-4" />
+            {/* Current Mode & Attachments */}
+            <div className="mt-3 flex items-center justify-between">
+              {!showModeMenu && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <currentMode.icon className="h-4 w-4" />
                   <span>{currentMode.label}</span>
                 </div>
-              );
-            })()}
+              )}
+
+              <div className="flex gap-2">
+                {attachments.map((file, idx) => (
+                  <div key={idx} className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-secondary text-[10px] font-medium border border-border">
+                    {file.type.startsWith('image/') ? <ImageIcon className="h-3 w-3" /> : <FileCode className="h-3 w-3" />}
+                    <span className="truncate max-w-[60px]">{file.name}</span>
+                    <button onClick={() => removeAttachment(idx)} className="hover:text-destructive">
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </motion.form>
 
           {/* Suggested Queries */}

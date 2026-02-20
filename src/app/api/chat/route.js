@@ -23,7 +23,7 @@ export async function POST(request) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const { query, mode = "quick", persona = "growth", conversationId } = await request.json();
+        const { query, mode = "quick", persona = "growth", conversationId, attachments = [] } = await request.json();
 
         if (!query) {
             return NextResponse.json({ error: "Query is required" }, { status: 400 });
@@ -113,8 +113,13 @@ Append CLARIFYING_QUESTIONS section if needed.`;
         };
 
         try {
-            console.log(`📡 Executing Gemini [${MODELS.GEMINI_2_5_FLASH}]...`);
-            const result = await geminiModel.generateContent(systemPrompt);
+            console.log(`📡 Executing Gemini [${MODELS.GEMINI_2_5_FLASH}] Multimodal...`);
+
+            // Build multimodal message parts
+            const promptPart = { text: systemPrompt };
+            const parts = [promptPart, ...attachments];
+
+            const result = await geminiModel.generateContent(parts);
             text = result.response.text();
 
             // Extract usage metadata from Gemini
