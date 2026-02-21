@@ -4,8 +4,10 @@ import { prisma } from "@/lib/prisma";
 import * as XLSX from 'xlsx';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import { generateWithRetry } from "@/lib/api-utils";
+import { getGeminiModel } from "@/lib/gemini";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// Strictly enforcing gemini-2.5-flash for the rotation factory
 
 export async function POST(req) {
     try {
@@ -53,8 +55,6 @@ export async function POST(req) {
             contextMessage = "Scan this image of a product list or screenshot.";
         }
 
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
         const prompt = `
             Act as an expert data extractor. ${contextMessage}
             Extract the following fields for each product identified:
@@ -68,7 +68,7 @@ export async function POST(req) {
             Example: [{ "name": "Item B", "category": "Retail", "price": 100, "stock": 5, "cost": 70 }]
         `;
 
-        const result = await model.generateContent([prompt, ...contentParts]);
+        const result = await generateWithRetry(getGeminiModel, [prompt, ...contentParts]);
         const responseText = result.response.text();
 
         const jsonMatch = responseText.match(/\[[\s\S]*\]/);

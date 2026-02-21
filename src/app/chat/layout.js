@@ -1,6 +1,6 @@
 "use client";
-
-import { ChatProvider, useChat } from "@/components/ChatProvider";
+import { useChat } from "@/components/ChatProvider";
+import VoiceOverlay from "@/components/VoiceOverlay";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Plus,
@@ -28,7 +28,7 @@ import {
 import Link from "next/link";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
-import { useEffect, useRef, Suspense } from "react";
+import { useRef, Suspense } from "react";
 import SourceManager from "@/components/SourceManager";
 import SourcePreviewModal from "@/components/SourcePreviewModal";
 
@@ -55,50 +55,18 @@ function ChatLayoutInner({ children }) {
         handleFileChange,
         removeAttachment,
         toggleRecording,
+        confirmVoiceInput,
+        cancelVoice,
         isRecording,
+        liveTranscript,
+        voiceMode,
         handleSendMessage,
-        recognitionRef,
-        isRecordingRef,
         isSpeaking,
         handleSpeak,
         stopSpeaking
     } = useChat();
 
     const menuRef = useRef(null);
-
-    // Initialize Speech Recognition in Layout/Provider scope
-    useEffect(() => {
-        if (typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition)) {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            recognitionRef.current = new SpeechRecognition();
-            recognitionRef.current.continuous = true;
-            recognitionRef.current.interimResults = true;
-            recognitionRef.current.lang = 'en-US';
-
-            recognitionRef.current.onstart = () => {
-                isRecordingRef.current = true;
-            };
-
-            recognitionRef.current.onresult = (event) => {
-                const transcript = Array.from(event.results)
-                    .map(result => result[0])
-                    .map(result => result.transcript)
-                    .join('');
-                setInput(transcript);
-            };
-
-            recognitionRef.current.onend = () => {
-                if (isRecordingRef.current) {
-                    try { recognitionRef.current.start(); } catch (e) { isRecordingRef.current = false; }
-                }
-            };
-
-            recognitionRef.current.onerror = (event) => {
-                console.error("Speech error:", event.error);
-                if (event.error !== 'no-speech') isRecordingRef.current = false;
-            };
-        }
-    }, [setInput]);
 
     const filteredConversations = conversations.filter((conv) =>
         conv.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -110,6 +78,13 @@ function ChatLayoutInner({ children }) {
 
     return (
         <div className="flex h-screen w-full overflow-hidden bg-background">
+            <VoiceOverlay
+                isRecording={isRecording}
+                transcript={liveTranscript}
+                voiceMode={voiceMode}
+                onStop={cancelVoice}
+                onConfirm={voiceMode === 'reviewing' ? confirmVoiceInput : toggleRecording}
+            />
             {/* Persistent Sidebar */}
             {showSidebar && (
                 <div className="w-[280px] border-r border-border bg-card flex flex-col shrink-0 overflow-hidden">
@@ -394,9 +369,7 @@ export default function RootChatLayout({ children }) {
                 </div>
             </div>
         }>
-            <ChatProvider>
-                <ChatLayoutInner>{children}</ChatLayoutInner>
-            </ChatProvider>
+            <ChatLayoutInner>{children}</ChatLayoutInner>
         </Suspense>
     );
 }

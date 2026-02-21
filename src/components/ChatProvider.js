@@ -33,16 +33,24 @@ export function ChatProvider({ children }) {
 
     // Voice & File State
     const [isRecording, setIsRecording] = useState(false);
+    const [voiceMode, setVoiceMode] = useState("idle"); // idle, listening, processing
+    const [liveTranscript, setLiveTranscript] = useState("");
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [attachments, setAttachments] = useState([]);
 
     const hasInitialQuerySent = useRef(false);
-    const recognitionRef = useRef(null);
     const isRecordingRef = useRef(false);
     const messagesEndRef = useRef(null);
     const fileInputRef = useRef(null);
 
-    // Initial Auth
+    // MediaRecorder-based voice recording (replaces Web Speech API which has network errors)
+    const mediaRecorderRef = useRef(null);
+    const audioChunksRef = useRef([]);
+
+    useEffect(() => {
+        // Voice is handled via toggleRecording and MediaRecorder API
+    }, []);
+
     useEffect(() => {
         if (status === "authenticated") {
             loadConversations();
@@ -164,14 +172,18 @@ export function ChatProvider({ children }) {
 
             const data = await res.json();
             if (res.ok) {
-                setMessages((prev) => [...prev, {
+                const assistantMsg = {
                     id: Date.now() + 1,
                     role: "assistant",
                     content: data.answer,
                     sources: data.sources || [],
                     clarifications: data.clarifications || [],
                     createdAt: new Date().toISOString(),
-                }]);
+                };
+                setMessages((prev) => [...prev, assistantMsg]);
+
+                // AI Voice Feedback
+                handleSpeak(data.answer);
             }
         } catch (error) {
             console.error("Chat error:", error);
@@ -191,6 +203,7 @@ export function ChatProvider({ children }) {
                 const data = await res.json();
                 await loadConversations();
                 router.push(`/chat/${data.conversation.id}`);
+                return data.conversation.id;
             }
         } catch (err) {
             console.error("New chat failed:", err);
@@ -221,7 +234,9 @@ export function ChatProvider({ children }) {
             setIsSpeaking(false);
             return;
         }
-        const utterance = new SpeechSynthesisUtterance(text);
+        // Basic cleanup for speech (remove markdown)
+        const cleanText = text.replace(/[*#`_]/g, '');
+        const utterance = new SpeechSynthesisUtterance(cleanText);
         utterance.onstart = () => setIsSpeaking(true);
         utterance.onend = () => setIsSpeaking(false);
         utterance.onerror = () => setIsSpeaking(false);
@@ -235,17 +250,116 @@ export function ChatProvider({ children }) {
         }
     };
 
-    const toggleRecording = () => {
-        if (!recognitionRef.current) return;
+    const parseVoiceCommand = (text) => {
+        const lowerText = text.toLowerCase().trim();
+
+        if (lowerText.includes("new chat") || lowerText.includes("create chat")) {
+            handleNewChat();
+            return true;
+        }
+        if (lowerText.includes("show inventory") || lowerText.includes("open catalog") || lowerText.includes("check stock")) {
+            router.push("/catalog");
+            return true;
+        }
+        if (lowerText.includes("show reports") || lowerText.includes("open analysis")) {
+            router.push("/reports");
+            return true;
+        }
+        if (lowerText.includes("go home") || lowerText.includes("open dashboard")) {
+            router.push("/");
+            return true;
+        }
+
+        return false;
+    };
+
+    const confirmVoiceInput = async () => {
+        if (!liveTranscript) return;
+        const handled = parseVoiceCommand(liveTranscript);
+        if (!handled) {
+            await handleSendMessage(liveTranscript);
+        }
+        setVoiceMode("idle");
+        setIsRecording(false);
+        isRecordingRef.current = false;
+        setLiveTranscript("");
+    };
+
+    const cancelVoice = () => {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            mediaRecorderRef.current.stop();
+        }
+        setVoiceMode("idle");
+        setIsRecording(false);
+        isRecordingRef.current = false;
+        setLiveTranscript("");
+    };
+
+    const toggleRecording = async () => {
         if (isRecordingRef.current) {
+            // STOP RECORDING
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+                mediaRecorderRef.current.stop();
+            }
+            // Do NOT hide overlay yet, wait for transcription review
+            setVoiceMode("processing");
             isRecordingRef.current = false;
-            recognitionRef.current.stop();
-            setIsRecording(false);
         } else {
+            // START RECORDING
             try {
-                recognitionRef.current.start();
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const recorder = new MediaRecorder(stream);
+                mediaRecorderRef.current = recorder;
+                audioChunksRef.current = [];
+                setLiveTranscript("");
+
+                recorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) audioChunksRef.current.push(e.data);
+                };
+
+                recorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+
+                    // Cleanup stream
+                    stream.getTracks().forEach(track => track.stop());
+
+                    // Send to our Gemini Transcribe API
+                    setVoiceMode("processing");
+                    try {
+                        const formData = new FormData();
+                        formData.append("audio", audioBlob);
+
+                        const res = await fetch("/api/transcribe", {
+                            method: "POST",
+                            body: formData,
+                        });
+
+                        const data = await res.json();
+                        if (data.transcript) {
+                            setLiveTranscript(data.transcript);
+                            setVoiceMode("reviewing");
+                        } else {
+                            // If empty transcript, just close
+                            setVoiceMode("idle");
+                            setIsRecording(false);
+                        }
+                    } catch (err) {
+                        console.error("Transcription failed:", err);
+                        setVoiceMode("idle");
+                        setIsRecording(false);
+                    }
+                };
+
+                recorder.start();
+                setIsRecording(true);
+                isRecordingRef.current = true;
+                setVoiceMode("listening");
             } catch (err) {
-                console.error("Mic start failed:", err);
+                console.error("Microphone access denied:", err);
+                alert("Please allow microphone access to use voice features.");
+                setIsRecording(false);
+                isRecordingRef.current = false;
+                setVoiceMode("idle");
             }
         }
     };
@@ -281,6 +395,8 @@ export function ChatProvider({ children }) {
         selectedSource, setSelectedSource,
         isSourceModalOpen, setIsSourceModalOpen,
         isRecording, setIsRecording,
+        voiceMode, setVoiceMode,
+        liveTranscript, setLiveTranscript,
         isSpeaking, setIsSpeaking,
         attachments, setAttachments,
         conversationId,
@@ -295,13 +411,13 @@ export function ChatProvider({ children }) {
         handleSpeak,
         stopSpeaking,
         toggleRecording,
+        confirmVoiceInput,
+        cancelVoice,
         handleFileChange,
         removeAttachment,
         handleSourceClick,
         messagesEndRef,
         fileInputRef,
-        recognitionRef,
-        isRecordingRef
     };
 
     return (

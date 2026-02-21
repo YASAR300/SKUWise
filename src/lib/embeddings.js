@@ -1,10 +1,8 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { embedWithRetry } from "./api-utils";
+import { getGeminiEmbeddingModel } from "./gemini";
 import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const geminiModel = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
 
 const openai = process.env.OPENAI_API_KEY
     ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -49,7 +47,7 @@ export async function getEmbedding(text) {
 
     // 1. Try Gemini (Primary)
     try {
-        const result = await geminiModel.embedContent(text);
+        const result = await embedWithRetry(getGeminiEmbeddingModel, text);
         const embedding = result.embedding.values;
         cache[text] = embedding;
         saveCache(cache);

@@ -1,15 +1,16 @@
 "use client";
-import { useState, useEffect } from "react";
 
+import { useState, useEffect } from "react";
 import { Inter } from "next/font/google";
 import "./globals.css";
+
 import Navbar from "@/components/Navbar";
-import ChatFAB from "@/components/ChatFAB";
-import { ThemeProvider } from "@/components/ThemeProvider";
+import { ThemeProvider as NextThemeProvider } from "@/components/ThemeProvider";
 import { usePathname } from "next/navigation";
-import { Providers } from "@/components/Providers";
+import { Providers as ContextProviders } from "@/components/Providers";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { motion, AnimatePresence } from "framer-motion";
+import NudgeToast from "@/components/NudgeToast";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -32,45 +33,36 @@ function LayoutContent({ children }) {
   }, []);
 
   return (
-    <Providers>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="system"
-        enableSystem
-        disableTransitionOnChange
-      >
-        <ErrorBoundary>
-          {!isAuthRoute && !isChatRoute && (
-            <>
-              <motion.div
-                className="aurora-bg"
-                animate={{ x: mousePos.x, y: mousePos.y }}
-                transition={{ type: "spring", damping: 50, stiffness: 200 }}
-              />
-              <motion.div
-                className="grid-bg"
-                animate={{ x: -mousePos.x * 0.5, y: -mousePos.y * 0.5 }}
-                transition={{ type: "spring", damping: 60, stiffness: 150 }}
-              />
-              <Navbar />
-              <ChatFAB />
-            </>
-          )}
-          <AnimatePresence mode="wait">
-            <motion.main
-              key={isChatRoute ? 'chat' : pathname}
-              initial={{ opacity: 0, scale: 0.98, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 1.02, y: -10 }}
-              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className={isChatRoute ? "" : "pt-24 pb-12 px-6 relative z-10"}
-            >
-              {children}
-            </motion.main>
-          </AnimatePresence>
-        </ErrorBoundary>
-      </ThemeProvider>
-    </Providers>
+    <ErrorBoundary>
+      <NudgeToast />
+      {!isAuthRoute && !isChatRoute && (
+        <>
+          <motion.div
+            className="aurora-bg"
+            animate={{ x: mousePos.x, y: mousePos.y }}
+            transition={{ type: "spring", damping: 50, stiffness: 200 }}
+          />
+          <motion.div
+            className="grid-bg"
+            animate={{ x: -mousePos.x * 0.5, y: -mousePos.y * 0.5 }}
+            transition={{ type: "spring", damping: 60, stiffness: 150 }}
+          />
+          <Navbar />
+        </>
+      )}
+      <AnimatePresence mode="wait">
+        <motion.main
+          key={isChatRoute ? 'chat' : pathname}
+          initial={{ opacity: 0, scale: 0.98, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 1.02, y: -10 }}
+          transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+          className={isChatRoute ? "" : "pt-24 pb-12 px-6 relative z-10"}
+        >
+          {children}
+        </motion.main>
+      </AnimatePresence>
+    </ErrorBoundary>
   );
 }
 
@@ -78,15 +70,18 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider
+        <NextThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem={true}
           storageKey="sku-wise-v3"
+          disableTransitionOnChange
         >
-          <LayoutContent>{children}</LayoutContent>
-        </ThemeProvider>
+          <ContextProviders>
+            <LayoutContent>{children}</LayoutContent>
+          </ContextProviders>
+        </NextThemeProvider>
       </body>
-    </html>
+    </html >
   );
 }

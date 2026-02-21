@@ -9,8 +9,8 @@ export const PROVIDERS = {
 };
 
 export const MODELS = {
-    GEMINI_1_5_FLASH: "gemini-1.5-flash",
-    GEMINI_2_FLASH: "gemini-2.0-flash",
+    GEMINI_1_5_FLASH: "gemini-2.5-flash",
+    GEMINI_2_FLASH: "gemini-2.5-flash",
     GEMINI_2_5_FLASH: "gemini-2.5-flash",
     GPT_4O_MINI: "gpt-4o-mini",
     EMBEDDING_004: "text-embedding-004",

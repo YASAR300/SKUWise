@@ -7,10 +7,10 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 
 import { calculateCost, PROVIDERS, MODELS } from "@/lib/usage";
+import { generateWithRetry } from "@/lib/api-utils";
+import { getGeminiModel } from "@/lib/gemini";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-// Note: gemini-2.0-flash is currently the latest stable for flash
-const geminiModel = genAI.getGenerativeModel({ model: MODELS.GEMINI_2_5_FLASH });
+// Strictly enforcing gemini-2.5-flash for the rotation factory
 
 const openai = process.env.OPENAI_API_KEY
     ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
@@ -119,7 +119,7 @@ Append CLARIFYING_QUESTIONS section if needed.`;
             const promptPart = { text: systemPrompt };
             const parts = [promptPart, ...attachments];
 
-            const result = await geminiModel.generateContent(parts);
+            const result = await generateWithRetry(getGeminiModel, parts);
             text = result.response.text();
 
             // Extract usage metadata from Gemini

@@ -19,6 +19,7 @@ model User {
   researchSessions ResearchSession[]
   trainingExamples TrainingExample[]
   usageRecords     UsageRecord[]
+  alerts           Alert[]
 }
 
 model UsageRecord {
@@ -166,4 +167,20 @@ model TrainingExample {
   @@index([wasHelpful])
   @@index([createdAt])
   @@index([persona, mode])
+}
+
+model Alert {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // "risk" | "opportunity" | "warning"
+  title     String
+  message   String
+  severity  String   // "low" | "medium" | "high" | "critical"
+  skuId     String?
+  dismissed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([createdAt])
 }

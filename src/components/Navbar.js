@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import AlertCenter from "./AlertCenter";
 
 const navLinks = [
     { label: "Research", href: "/" },
@@ -64,6 +65,7 @@ export default function Navbar() {
             </div>
 
             <div className="flex items-center gap-4">
+                <AlertCenter />
                 <ThemeToggle />
 
                 <div className="relative">
