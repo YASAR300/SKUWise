@@ -10,6 +10,14 @@ export async function GET(req) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
+        if (!prisma?.alert) {
+            console.error("❌ Prisma Client Error: 'alert' model not found. Running prisma generate is required.");
+            return NextResponse.json({
+                error: "Prisma Client out of sync",
+                details: "The 'alert' model is not recognized by the Prisma Client. Please re-deploy."
+            }, { status: 500 });
+        }
+
         const alerts = await prisma.alert.findMany({
             where: {
                 userId: session.user.id,

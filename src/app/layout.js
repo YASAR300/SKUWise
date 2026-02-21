@@ -16,12 +16,11 @@ const inter = Inter({ subsets: ["latin"] });
 
 function LayoutContent({ children }) {
   const pathname = usePathname();
-  const isChatRoute = pathname?.startsWith("/chat/");
-  const isAuthRoute = pathname === "/login" || pathname === "/register";
-
+  const [mounted, setMounted] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
+    setMounted(true);
     const handleMouseMove = (e) => {
       setMousePos({
         x: (e.clientX / window.innerWidth - 0.5) * 20,
@@ -31,6 +30,18 @@ function LayoutContent({ children }) {
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
+
+  const isChatRoute = pathname?.startsWith("/chat/");
+  const isAuthRoute = pathname === "/login" || pathname === "/register";
+
+  // Prevent hydration mismatch by returning a neutral state on server
+  if (!mounted) {
+    return (
+      <main className="pt-24 pb-12 px-6 relative z-10">
+        {children}
+      </main>
+    );
+  }
 
   return (
     <ErrorBoundary>
