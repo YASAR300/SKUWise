@@ -203,7 +203,27 @@ Append CLARIFYING_QUESTIONS section if needed.`;
 
         return NextResponse.json({ answer: answerText, clarifications, sources, userMessageId, aiMessageId });
     } catch (error) {
-        console.error("Chat API Critical Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error("❌ Chat API Critical Error:", {
+            message: error.message,
+            stack: error.stack?.split('\n').slice(0, 3).join('\n')
+        });
+
+        // Determine the likeliest cause
+        let errorType = "General Error";
+        let detail = error.message;
+
+        if (error.message?.includes("Gemini") || error.message?.includes("Generative")) {
+            errorType = "AI Provider Error";
+            detail = "Gemini API rotation failed. Check your API keys and quotas.";
+        } else if (error.message?.includes("Prisma") || error.code?.startsWith("P")) {
+            errorType = "Database Error";
+            detail = "Prisma connection failed. Ensure your database is migrated and reachable.";
+        }
+
+        return NextResponse.json({
+            error: errorType,
+            details: detail,
+            raw: error.message
+        }, { status: 500 });
     }
 }

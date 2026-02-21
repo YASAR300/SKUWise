@@ -15,6 +15,11 @@ export default function NudgeToast() {
             const res = await fetch("/api/alerts");
             const alerts = await res.json();
 
+            if (!Array.isArray(alerts)) {
+                console.warn("NudgeToast: Received non-array alerts response", alerts);
+                return;
+            }
+
             // Look for critical alerts that haven't been shown in this "session"
             const critical = alerts.find(a => a.severity === "critical" && !a.dismissed);
 

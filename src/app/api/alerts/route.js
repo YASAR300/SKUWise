@@ -20,8 +20,18 @@ export async function GET(req) {
 
         return NextResponse.json(alerts);
     } catch (error) {
-        console.error("Fetch Alerts Error:", error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error("❌ Fetch Alerts Error:", {
+            message: error.message,
+            code: error.code, // Prisma error codes
+            stack: error.stack?.split('\n').slice(0, 3).join('\n')
+        });
+
+        // Return a more descriptive error if it's likely a database issue
+        const isDbError = error.message?.includes("Prisma") || error.code?.startsWith("P");
+        return NextResponse.json({
+            error: "Failed to fetch alerts",
+            details: isDbError ? "Database connection or schema mismatch. Verify migrations." : error.message
+        }, { status: 500 });
     }
 }
 
