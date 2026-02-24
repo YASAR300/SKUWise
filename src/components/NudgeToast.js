@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { X, Sparkles, AlertCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useChat } from "./ChatProvider";
@@ -10,13 +10,17 @@ export default function NudgeToast() {
     const [isVisible, setIsVisible] = useState(false);
     const { handleSendMessage } = useChat();
 
-    const checkCriticalAlerts = async () => {
+    const checkCriticalAlerts = useCallback(async () => {
         try {
             const res = await fetch("/api/alerts");
-            const alerts = await res.json();
 
+            if (res.status === 401) {
+                // Silently skip if unauthorized
+                return;
+            }
+
+            const alerts = await res.json();
             if (!Array.isArray(alerts)) {
-                console.warn("NudgeToast: Received non-array alerts response", alerts);
                 return;
             }
 
@@ -33,7 +37,7 @@ export default function NudgeToast() {
         } catch (err) {
             console.error("Failed to check critical alerts:", err);
         }
-    };
+    }, [latestAlert]);
 
     useEffect(() => {
         // Initial check after 5 seconds to let UI stabilize
@@ -46,7 +50,7 @@ export default function NudgeToast() {
             clearTimeout(initialTimer);
             clearInterval(poll);
         };
-    }, [latestAlert]);
+    }, [checkCriticalAlerts]);
 
     const handleAskAI = () => {
         if (!latestAlert) return;

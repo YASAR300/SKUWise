@@ -43,13 +43,14 @@ export default function AlertCenter() {
     };
 
     useEffect(() => {
-        fetchAlerts();
+        const frame = requestAnimationFrame(() => fetchAlerts());
 
         // Polling every 5 minutes only FEETCHES existing alerts
         // It does NOT generate new ones to save Gemini quota
         const poll = setInterval(fetchAlerts, 5 * 60 * 1000);
 
         return () => {
+            cancelAnimationFrame(frame);
             clearInterval(poll);
         };
     }, []);
