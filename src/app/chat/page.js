@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Loader2 } from "lucide-react";
@@ -15,18 +15,7 @@ export default function ChatIndexPage() {
     const { status } = useSession();
     const [error, setError] = useState(null);
 
-    useEffect(() => {
-        if (status === "unauthenticated") {
-            router.push("/login");
-            return;
-        }
-
-        if (status === "authenticated") {
-            initializeApp();
-        }
-    }, [status, router]);
-
-    async function initializeApp() {
+    const initializeApp = useCallback(async () => {
         try {
             // 1. Try to fetch conversations
             const res = await fetch("/api/conversations");
@@ -59,7 +48,18 @@ export default function ChatIndexPage() {
             console.error("Chat Init Error:", err);
             setError(err.message);
         }
-    }
+    }, [router]);
+
+    useEffect(() => {
+        if (status === "unauthenticated") {
+            router.push("/login");
+            return;
+        }
+
+        if (status === "authenticated") {
+            initializeApp();
+        }
+    }, [status, router, initializeApp]);
 
     if (error) {
         return (

@@ -25,10 +25,10 @@ export default function ChatPage() {
     // Auto-scroll inside the page container
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages, isLoading]);
+    }, [messages, isLoading, messagesEndRef]);
 
     return (
-        <motion.div 
+        <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3 }}
@@ -78,19 +78,19 @@ export default function ChatPage() {
                                                     sources={message.sources}
                                                     onCitationClick={handleSourceClick}
                                                 />
-                                                
+
                                                 <div className="mt-4 flex items-center gap-3">
-                                                <button
-                                                    onClick={() => handleSpeak(message.content)}
-                                                    className={cn(
-                                                        "flex items-center gap-1.5 px-2 py-1 rounded-lg border transition-all text-[9px] font-bold uppercase tracking-[0.1em]",
-                                                        isSpeaking ? "bg-primary/20 text-primary border-primary/30" : "bg-secondary/50 text-muted-foreground border-border hover:border-primary/30"
-                                                    )}
-                                                >
-                                                    {isSpeaking ? <VolumeX className="h-2.5 w-2.5" /> : <Volume2 className="h-2.5 w-2.5" />}
-                                                    {isSpeaking ? "Stop" : "Speak"}
-                                                </button>
-                                            </div>
+                                                    <button
+                                                        onClick={() => handleSpeak(message.content)}
+                                                        className={cn(
+                                                            "flex items-center gap-1.5 px-2 py-1 rounded-lg border transition-all text-[9px] font-bold uppercase tracking-[0.1em]",
+                                                            isSpeaking ? "bg-primary/20 text-primary border-primary/30" : "bg-secondary/50 text-muted-foreground border-border hover:border-primary/30"
+                                                        )}
+                                                    >
+                                                        {isSpeaking ? <VolumeX className="h-2.5 w-2.5" /> : <Volume2 className="h-2.5 w-2.5" />}
+                                                        {isSpeaking ? "Stop" : "Speak"}
+                                                    </button>
+                                                </div>
 
                                                 {message.clarifications?.length > 0 && (
                                                     <div className="mt-8 space-y-3">

@@ -58,7 +58,7 @@ export default function VoiceOverlay({ isRecording, transcript, voiceMode, onSto
                     <div className="min-h-[120px] bg-muted/50 rounded-3xl p-8 border border-border/50 relative overflow-hidden group">
                         <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
                         <p className="text-xl md:text-3xl font-medium text-foreground/90 leading-tight">
-                            {voiceMode === 'processing' ? "Transcribing..." : (transcript || "Speak now, I'm listening...")}
+                            {voiceMode === 'processing' ? "Transcribing..." : (transcript || "Speak now, I&apos;m listening...")}
                         </p>
                         {voiceMode === 'listening' && !transcript && (
                             <div className="mt-6 flex gap-1 justify-center">
@@ -81,7 +81,7 @@ export default function VoiceOverlay({ isRecording, transcript, voiceMode, onSto
 
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center justify-center gap-2">
                         <Command className="h-3 w-3" />
-                        Try saying: "Show inventory" or "Create new chat"
+                        Try saying: &quot;Show inventory&quot; or &quot;Create new chat&quot;
                     </p>
                 </div>
 

@@ -20,7 +20,7 @@ function LayoutContent({ children }) {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
-    setMounted(true);
+    const frame = requestAnimationFrame(() => setMounted(true));
     const handleMouseMove = (e) => {
       setMousePos({
         x: (e.clientX / window.innerWidth - 0.5) * 20,
@@ -28,7 +28,10 @@ function LayoutContent({ children }) {
       });
     };
     window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener("mousemove", handleMouseMove);
+    };
   }, []);
 
   const isChatRoute = pathname?.startsWith("/chat/");

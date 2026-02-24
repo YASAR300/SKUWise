@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useRef } from "react";
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { fetchWithRetry } from "@/lib/api-utils";
@@ -47,59 +47,24 @@ export function ChatProvider({ children }) {
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
 
-    useEffect(() => {
-        // Voice is handled via toggleRecording and MediaRecorder API
-    }, []);
-
-    useEffect(() => {
-        if (status === "authenticated") {
-            loadConversations();
+    // Handlers and Data Loaders defined first to avoid TDZ errors in Effects
+    const handleSpeak = useCallback((text) => {
+        if (typeof window === "undefined" || !window.speechSynthesis) return;
+        if (isSpeaking) {
+            window.speechSynthesis.cancel();
+            setIsSpeaking(false);
+            return;
         }
-    }, [status]);
+        // Basic cleanup for speech (remove markdown)
+        const cleanText = text.replace(/[*#`_]/g, '');
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.onstart = () => setIsSpeaking(true);
+        utterance.onend = () => setIsSpeaking(false);
+        utterance.onerror = () => setIsSpeaking(false);
+        window.speechSynthesis.speak(utterance);
+    }, [isSpeaking]);
 
-    // Re-load when ID changes
-    useEffect(() => {
-        if (status === "authenticated" && conversationId) {
-            loadConversation();
-        } else if (!conversationId) {
-            setMessages([]);
-            setConversation(null);
-        }
-    }, [conversationId, status]);
-
-    // Handle initial query
-    useEffect(() => {
-        // We only send if we have a query, haven't sent it yet, and have an ID
-        if (initialQuery && !hasInitialQuerySent.current && conversationId) {
-            // Wait for history to finish loading so we don't double-send or overwrite
-            if (isHistoryLoading) return;
-
-            // If messages are empty, it's a new chat, proceed
-            if (messages.length === 0) {
-                hasInitialQuerySent.current = true;
-
-                // Remove query from URL immediately to prevent reload triggers
-                const params = new URLSearchParams(searchParams.toString());
-                params.delete('query');
-                router.replace(`/chat/${conversationId}${params.toString() ? `?${params.toString()}` : ''}`, { scroll: false });
-
-                let pendingAttachments = [];
-                try {
-                    const stored = sessionStorage.getItem('pending_attachments');
-                    if (stored) {
-                        pendingAttachments = JSON.parse(stored);
-                        sessionStorage.removeItem('pending_attachments');
-                    }
-                } catch (e) {
-                    console.error("Pending attachments parse error:", e);
-                }
-                handleSendMessage(initialQuery, pendingAttachments);
-            }
-        }
-    }, [initialQuery, messages.length, conversationId, isHistoryLoading, router, searchParams]);
-
-    // Data Loaders
-    async function loadConversation() {
+    const loadConversation = useCallback(async () => {
         if (!conversationId) return;
         setIsHistoryLoading(true);
         try {
@@ -115,9 +80,9 @@ export function ChatProvider({ children }) {
         } finally {
             setIsHistoryLoading(false);
         }
-    }
+    }, [conversationId]);
 
-    async function loadConversations() {
+    const loadConversations = useCallback(async () => {
         try {
             const res = await fetchWithRetry("/api/conversations");
             if (res.ok) {
@@ -127,10 +92,9 @@ export function ChatProvider({ children }) {
         } catch (error) {
             console.error("Failed to load conversations:", error);
         }
-    }
+    }, []);
 
-    // Handlers
-    async function handleSendMessage(text = input, existingAttachments = []) {
+    const handleSendMessage = useCallback(async (text = input, existingAttachments = []) => {
         if (!text.trim() || isSending || !conversationId) return;
 
         const userMessage = {
@@ -190,7 +154,55 @@ export function ChatProvider({ children }) {
         } finally {
             setIsSending(false);
         }
-    }
+    }, [input, isSending, conversationId, attachments, handleSpeak]);
+
+    // Effects
+    useEffect(() => {
+        if (status === "authenticated") {
+            loadConversations();
+        }
+    }, [status, loadConversations]);
+
+    // Re-load when ID changes
+    useEffect(() => {
+        if (status === "authenticated" && conversationId) {
+            loadConversation();
+        } else if (!conversationId) {
+            setMessages([]);
+            setConversation(null);
+        }
+    }, [conversationId, status, loadConversation]);
+
+    // Handle initial query
+    useEffect(() => {
+        // We only send if we have a query, haven't sent it yet, and have an ID
+        if (initialQuery && !hasInitialQuerySent.current && conversationId) {
+            // Wait for history to finish loading so we don't double-send or overwrite
+            if (isHistoryLoading) return;
+
+            // If messages are empty, it's a new chat, proceed
+            if (messages.length === 0) {
+                hasInitialQuerySent.current = true;
+
+                // Remove query from URL immediately to prevent reload triggers
+                const params = new URLSearchParams(searchParams.toString());
+                params.delete('query');
+                router.replace(`/chat/${conversationId}${params.toString() ? `?${params.toString()}` : ''}`, { scroll: false });
+
+                let pendingAttachments = [];
+                try {
+                    const stored = sessionStorage.getItem('pending_attachments');
+                    if (stored) {
+                        pendingAttachments = JSON.parse(stored);
+                        sessionStorage.removeItem('pending_attachments');
+                    }
+                } catch (e) {
+                    console.error("Pending attachments parse error:", e);
+                }
+                handleSendMessage(initialQuery, pendingAttachments);
+            }
+        }
+    }, [initialQuery, messages.length, conversationId, isHistoryLoading, router, searchParams, handleSendMessage]);
 
     async function handleNewChat() {
         try {
@@ -227,21 +239,6 @@ export function ChatProvider({ children }) {
         }
     }
 
-    const handleSpeak = (text) => {
-        if (typeof window === "undefined" || !window.speechSynthesis) return;
-        if (isSpeaking) {
-            window.speechSynthesis.cancel();
-            setIsSpeaking(false);
-            return;
-        }
-        // Basic cleanup for speech (remove markdown)
-        const cleanText = text.replace(/[*#`_]/g, '');
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        utterance.onstart = () => setIsSpeaking(true);
-        utterance.onend = () => setIsSpeaking(false);
-        utterance.onerror = () => setIsSpeaking(false);
-        window.speechSynthesis.speak(utterance);
-    };
 
     const stopSpeaking = () => {
         if (typeof window !== "undefined" && window.speechSynthesis) {

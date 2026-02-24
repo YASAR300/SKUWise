@@ -6,8 +6,11 @@ export default function Portal({ children }) {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
-        setMounted(true);
-        return () => setMounted(false);
+        const frame = requestAnimationFrame(() => setMounted(true));
+        return () => {
+            cancelAnimationFrame(frame);
+            setMounted(false);
+        };
     }, []);
 
     return mounted ? createPortal(children, document.body) : null;
