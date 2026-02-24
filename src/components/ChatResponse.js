@@ -71,13 +71,14 @@ export default function ChatResponse({ content, sources = [], onCitationClick })
 
     // Find the source object for a given ID
     const findSource = (id) => {
-        return sources.find(s => s.id === id);
+        return sources.find(s => String(s.id).toLowerCase() === String(id).toLowerCase());
     };
 
     // Find the index of a source for display
     const getSourceIndex = (id) => {
-        const idx = sources.findIndex(s => s.id === id);
-        return idx !== -1 ? idx + 1 : "?";
+        const source = findSource(id);
+        if (!source) return "?";
+        return source.id === "DB" ? "DB" : source.id;
     };
 
     // Replace [Source: ID] with a manageable marker for ReactMarkdown

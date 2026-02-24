@@ -70,7 +70,7 @@ export default function SourcePreviewModal({ isOpen, onClose, source }) {
                                         Source Content
                                     </div>
                                     <div className="p-5 rounded-2xl bg-secondary/30 border border-border/50 text-sm leading-relaxed text-foreground/90 font-medium italic">
-                                        "{source.content}"
+                                        &quot;{source.content}&quot;
                                     </div>
                                 </div>
 
