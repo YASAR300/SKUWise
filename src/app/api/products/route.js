@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import * as cache from "@/lib/cache";
+import { indexToQdrant } from "@/lib/search-utils";
 
 const CACHE_TTL = 60000; // 1 minute for products
 
@@ -56,6 +57,7 @@ export async function GET(req) {
                     category: true,
                     price: true,
                     stock: true,
+                    imageUrl: true,
                     updatedAt: true,
                     reorderPoint: true
                 }
@@ -135,6 +137,9 @@ export async function POST(req) {
                 }
             });
         }
+
+        // Index to Qdrant for immediate RAG availability
+        indexToQdrant(product, "product");
 
         // Invalidate products cache for this user
         cache.clear();

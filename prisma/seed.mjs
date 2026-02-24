@@ -76,6 +76,7 @@ async function main() {
                 price: p.price,
                 cost: p.price * 0.7,
                 stock: p.stock,
+                imageUrl: p.thumbnail,
                 reorderPoint: Math.floor(Math.random() * 41) + 10,
             },
             create: {
@@ -84,6 +85,7 @@ async function main() {
                 category: p.category,
                 price: p.price,
                 cost: p.price * 0.7, // Simulated cost
+                imageUrl: p.thumbnail,
                 rating: p.rating,
                 stock: p.stock,
                 reorderPoint: Math.floor(Math.random() * 41) + 10, // 10-50

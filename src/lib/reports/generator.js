@@ -5,12 +5,12 @@ import { prisma } from "@/lib/prisma";
  * Generate Inventory Health Report
  * Analyzes stock levels, turnover rates, and reorder points
  */
-export async function generateInventoryReport(filters = {}) {
+export async function generateInventoryReport(userId, filters = {}) {
     const { dateRange, categories, brands, minStock, maxStock } = filters;
 
     try {
-        // Build query filters
-        const where = {};
+        // Build query filters with userId enforcement
+        const where = { userId };
         if (categories?.length) where.category = { in: categories };
         if (brands?.length) where.brand = { in: brands };
         if (minStock !== undefined) where.stock = { gte: minStock };
@@ -65,11 +65,11 @@ export async function generateInventoryReport(filters = {}) {
  * Generate Margin Analysis Report
  * Analyzes profit margins, cost breakdowns, and pricing
  */
-export async function generateMarginReport(filters = {}) {
+export async function generateMarginReport(userId, filters = {}) {
     const { categories, brands } = filters;
 
     try {
-        const where = {};
+        const where = { userId };
         if (categories?.length) where.category = { in: categories };
         if (brands?.length) where.brand = { in: brands };
 
@@ -130,11 +130,11 @@ export async function generateMarginReport(filters = {}) {
  * Generate Sales Performance Report
  * Analyzes revenue, trends, and top products
  */
-export async function generateSalesReport(filters = {}) {
+export async function generateSalesReport(userId, filters = {}) {
     const { dateRange, categories } = filters;
 
     try {
-        const where = {};
+        const where = { userId };
         if (categories?.length) where.category = { in: categories };
 
         const products = await prisma.product.findMany({ where });
@@ -184,11 +184,11 @@ export async function generateSalesReport(filters = {}) {
  * Generate Competitive Analysis Report
  * Compares products and identifies gaps
  */
-export async function generateCompetitiveReport(filters = {}) {
+export async function generateCompetitiveReport(userId, filters = {}) {
     const { categories } = filters;
 
     try {
-        const where = {};
+        const where = { userId };
         if (categories?.length) where.category = { in: categories };
 
         const products = await prisma.product.findMany({ where });

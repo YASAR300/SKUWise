@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 import {
     generateInventoryReport,
     generateMarginReport,
@@ -10,26 +12,32 @@ import * as XLSX from "xlsx";
 
 export async function POST(request) {
     try {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         const { type, filters = {}, format = "json" } = await request.json();
+        const userId = session.user.id;
 
         if (!type) {
             return NextResponse.json({ error: "Report type is required" }, { status: 400 });
         }
 
-        // Generate report based on type
+        // Generate report based on type with userId enforcement
         let reportData;
         switch (type) {
             case "inventory":
-                reportData = await generateInventoryReport(filters);
+                reportData = await generateInventoryReport(userId, filters);
                 break;
             case "margin":
-                reportData = await generateMarginReport(filters);
+                reportData = await generateMarginReport(userId, filters);
                 break;
             case "sales":
-                reportData = await generateSalesReport(filters);
+                reportData = await generateSalesReport(userId, filters);
                 break;
             case "competitive":
-                reportData = await generateCompetitiveReport(filters);
+                reportData = await generateCompetitiveReport(userId, filters);
                 break;
             default:
                 return NextResponse.json({ error: "Invalid report type" }, { status: 400 });

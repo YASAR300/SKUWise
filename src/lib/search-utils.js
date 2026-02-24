@@ -1,13 +1,15 @@
 import qdrantClient from "./qdrant";
-import { getEmbedding } from "./embeddings";
+import { getEmbedding, createContentString } from "./embeddings";
+import crypto from "crypto";
 
 /**
  * Searches across all relevant collections in Qdrant for context.
+ * @param {string} userId
  * @param {string} queryText 
  * @param {number} limit 
  * @returns {Promise<Array>}
  */
-export async function getContext(queryText, limit = 5) {
+export async function getContext(userId, queryText, limit = 5) {
     // Skip if Qdrant is not available
     if (!qdrantClient) {
         console.warn("⚠️ Qdrant not available, returning empty results");
@@ -24,6 +26,9 @@ export async function getContext(queryText, limit = 5) {
                 const searchResult = await qdrantClient.search(collection, {
                     vector: vector,
                     limit: limit,
+                    filter: {
+                        must: [{ key: "userId", match: { value: userId } }]
+                    },
                     with_payload: true,
                 });
 
@@ -52,8 +57,10 @@ export async function getContext(queryText, limit = 5) {
 /**
  * Enhanced retrieval for Deep Research mode.
  * Fetches more data and attempts to group related entities.
+ * @param {string} userId
+ * @param {string} queryText
  */
-export async function getDeepContext(queryText) {
+export async function getDeepContext(userId, queryText) {
     // Skip if Qdrant is not available
     if (!qdrantClient) {
         console.warn("⚠️ Qdrant not available for deep context");
@@ -71,6 +78,9 @@ export async function getDeepContext(queryText) {
                 const searchResult = await qdrantClient.search(collection, {
                     vector: vector,
                     limit: 15, // Higher limit for deep research
+                    filter: {
+                        must: [{ key: "userId", match: { value: userId } }]
+                    },
                     with_payload: true,
                 });
 
@@ -120,5 +130,45 @@ export async function getDeepContext(queryText) {
     } catch (error) {
         console.error("getDeepContext error:", error.message);
         return { contextString: "", rawResults: [] };
+    }
+}
+
+/**
+ * Indexes a single item into Qdrant.
+ * @param {Object} item The Prisma model instance
+ * @param {string} type 'product' | 'review' | 'sales'
+ */
+export async function indexToQdrant(item, type) {
+    if (!qdrantClient) return;
+
+    try {
+        const collectionMap = { product: "products", review: "reviews", sales: "sales" };
+        const collection = collectionMap[type];
+        if (!collection) throw new Error(`Invalid type: ${type}`);
+
+        const content = createContentString(item, type);
+        const vector = await getEmbedding(content);
+
+        // Generate a deterministic ID if not provided
+        const pointId = item.id.includes("-") ? item.id :
+            crypto.createHash('sha256').update(`${type}_${item.id}`).digest('hex').slice(0, 32);
+
+        await qdrantClient.upsert(collection, {
+            points: [{
+                id: pointId,
+                vector,
+                payload: {
+                    ...item,
+                    dbId: item.id,
+                    content,
+                    type,
+                    indexedAt: new Date().toISOString()
+                }
+            }]
+        });
+
+        console.log(`✅ Indexed ${type} into Qdrant:`, item.id);
+    } catch (error) {
+        console.error(`❌ Failed to index ${type} to Qdrant:`, error.message);
     }
 }

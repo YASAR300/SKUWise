@@ -48,6 +48,7 @@ model Product {
   price           Float
   rating          Float?
   stock           Int              @default(0)
+  imageUrl        String?          
   cost            Float?           
   reorderPoint    Int?             
   createdAt       DateTime         @default(now())
