@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, memo } from "react";
+import Image from "next/image";
 import {
     Package,
     Search,
@@ -26,7 +27,13 @@ import {
     ArrowRight,
     ChevronLeft,
     ChevronRight,
-    ArrowUpDown
+    ArrowUpDown,
+    Star,
+    TrendingUp,
+    MessageSquare,
+    Trash2,
+    BarChart2,
+    Edit3
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -36,9 +43,11 @@ import { fetchWithRetry } from "@/lib/api-utils";
 import SkeletonLoader from "@/components/SkeletonLoader";
 import confetti from "canvas-confetti";
 import Portal from "@/components/Portal";
+import ModelViewer from "@/components/ModelViewer";
+import BulkImportModal from "@/components/BulkImportModal";
 
 // Move ProductCard outside of CatalogPage component for stability and performance
-const ProductCard = memo(({ product }) => {
+const ProductCard = memo(({ product, onSelect }) => {
     return (
         <motion.div
             layout
@@ -46,47 +55,415 @@ const ProductCard = memo(({ product }) => {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.2 }}
-            className="bg-card p-10 rounded-[2.5rem] border border-border hover:border-foreground/20 hover:shadow-2xl hover:-translate-y-2 transition-all group flex flex-col relative overflow-hidden"
+            onClick={() => onSelect?.(product)}
+            className="bg-card p-0 rounded-[2.5rem] border border-border hover:border-foreground/20 hover:shadow-2xl transition-all group flex flex-col relative overflow-hidden cursor-pointer"
         >
-            <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-10 transition-opacity">
-                <Activity className="h-16 w-16" />
+            {/* Visual Asset Area */}
+            <div className="relative h-64 w-full bg-secondary/30 overflow-hidden group-hover:scale-[1.02] transition-transform duration-500">
+                {product.imageUrl ? (
+                    <Image
+                        src={product.imageUrl}
+                        alt={product.name}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-700"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                    />
+                ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center opacity-20 group-hover:opacity-40 transition-opacity">
+                        <ShoppingBag className="h-16 w-16 mb-2" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">No_Asset_Loaded</span>
+                    </div>
+                )}
+
+                {/* Overlay Metadata */}
+                <div className="absolute top-4 left-4 flex gap-2">
+                    <span className="px-2 py-1 bg-background/80 backdrop-blur-md rounded-lg text-[8px] font-black uppercase tracking-widest border border-border text-muted-foreground">
+                        {product.category}
+                    </span>
+                </div>
+
+                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all">
+                    <div className="h-10 w-10 rounded-xl bg-background/80 backdrop-blur-md flex items-center justify-center text-foreground border border-border shadow-lg">
+                        <Activity className="h-4 w-4" />
+                    </div>
+                </div>
             </div>
 
-            <div className="flex justify-between items-start mb-12">
-                <div className="h-14 w-14 rounded-2xl bg-secondary flex items-center justify-center text-muted-foreground group-hover:text-foreground group-hover:bg-foreground/5 transition-all">
-                    <ShoppingBag className="h-6 w-6" />
+            <div className="p-8 space-y-4 flex-grow flex flex-col">
+                <div className="flex justify-between items-start gap-4">
+                    <div className="space-y-1 min-w-0">
+                        <h3 className="text-xl font-black text-foreground tracking-tighter leading-tight italic group-hover:translate-x-1 transition-transform truncate">
+                            {product.name}
+                        </h3>
+                        <p className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-[0.2em] font-mono">
+                            ID_{product.id.slice(-8)}
+                        </p>
+                    </div>
+                    <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-20 group-hover:opacity-100 transition-all shrink-0" />
                 </div>
-                <div className="flex flex-col items-end gap-1">
-                    <span className="text-[9px] font-black text-muted-foreground/30 uppercase tracking-[0.2em] font-mono">{product.id.slice(-8)}</span>
-                    <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-20 group-hover:opacity-100 transition-all" />
-                </div>
-            </div>
 
-            <div className="space-y-2 flex-grow">
-                <span className="inline-block px-3 py-1 bg-secondary border border-border rounded-lg text-[9px] font-black uppercase tracking-widest text-muted-foreground">
-                    {product.category}
-                </span>
-                <h3 className="text-2xl font-black text-foreground tracking-tighter leading-tight italic group-hover:translate-x-1 transition-transform truncate">{product.name}</h3>
-            </div>
-
-            <div className="mt-12 pt-8 border-t border-border flex justify-between items-end">
-                <div className="space-y-1">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Valuation</p>
-                    <p className="text-2xl font-black text-foreground tracking-tighter">₹{product.price.toLocaleString()}</p>
-                </div>
-                <div className="text-right space-y-1">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Liquidity</p>
-                    <p className={cn(
-                        "text-sm font-black italic",
-                        product.stock < (product.reorderPoint || 10) ? "text-rose-500" : "text-foreground"
-                    )}>
-                        {product.stock} Units
-                    </p>
+                <div className="mt-auto pt-6 border-t border-border flex justify-between items-end">
+                    <div className="space-y-1">
+                        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Valuation</p>
+                        <p className="text-2xl font-black text-foreground tracking-tighter italic">₹{product.price.toLocaleString()}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-3">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                window.dispatchEvent(new CustomEvent('open-3d-preview', { detail: product }));
+                            }}
+                            className="p-3 rounded-xl bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-primary-foreground transition-all group/btn flex items-center justify-center"
+                        >
+                            <CubeTransparentIcon className="h-4 w-4" />
+                        </button>
+                        <div className="text-right space-y-1">
+                            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Liquidity</p>
+                            <p className={cn(
+                                "text-[10.5px] font-black italic uppercase tracking-tighter",
+                                product.stock < (product.reorderPoint || 10) ? "text-rose-500" : "text-foreground"
+                            )}>
+                                {product.stock} Units
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </motion.div>
     );
 });
+ProductCard.displayName = "ProductCard";
+
+// Helper component for the Icon since heroicons might not be globally available
+function CubeTransparentIcon({ className }) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-5.25v9" />
+        </svg>
+    );
+}
+
+// ── ProductDetailSheet ─────────────────────────────────────────────────────
+function ProductDetailSheet({ product, onClose }) {
+    const [sales, setSales] = useState([]);
+    const [reviews, setReviews] = useState([]);
+    const [salesLoading, setSalesLoading] = useState(true);
+    const [reviewsLoading, setReviewsLoading] = useState(true);
+    const [tab, setTab] = useState("sales"); // "sales" | "reviews"
+
+    // Sales form
+    const [saleForm, setSaleForm] = useState({ unitsSold: "", revenue: "", date: new Date().toISOString().substring(0, 10) });
+    const [savingSale, setSavingSale] = useState(false);
+    const [saleMsg, setSaleMsg] = useState(null);
+
+    // Review form
+    const [reviewForm, setReviewForm] = useState({ rating: 5, comment: "", date: new Date().toISOString().substring(0, 10) });
+    const [savingReview, setSavingReview] = useState(false);
+    const [reviewMsg, setReviewMsg] = useState(null);
+
+    useEffect(() => {
+        if (!product) return;
+        setSalesLoading(true);
+        setReviewsLoading(true);
+        fetch(`/api/sales?productId=${product.id}`)
+            .then(r => r.json())
+            .then(d => setSales(d.sales || []))
+            .finally(() => setSalesLoading(false));
+        fetch(`/api/reviews?productId=${product.id}`)
+            .then(r => r.json())
+            .then(d => setReviews(d.reviews || []))
+            .finally(() => setReviewsLoading(false));
+    }, [product]);
+
+    const handleAddSale = async (e) => {
+        e.preventDefault();
+        if (!saleForm.unitsSold || !saleForm.revenue) return;
+        setSavingSale(true);
+        setSaleMsg(null);
+        try {
+            const res = await fetch("/api/sales", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ productId: product.id, ...saleForm }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setSales(prev => [data.sale, ...prev]);
+                setSaleForm({ unitsSold: "", revenue: "", date: new Date().toISOString().substring(0, 10) });
+                setSaleMsg({ type: "success", text: "Sale entry saved!" });
+            } else throw new Error(data.error);
+        } catch (err) {
+            setSaleMsg({ type: "error", text: err.message });
+        } finally {
+            setSavingSale(false);
+            setTimeout(() => setSaleMsg(null), 3000);
+        }
+    };
+
+    const handleDeleteSale = async (id) => {
+        await fetch(`/api/sales?id=${id}`, { method: "DELETE" });
+        setSales(prev => prev.filter(s => s.id !== id));
+    };
+
+    const handleAddReview = async (e) => {
+        e.preventDefault();
+        setSavingReview(true);
+        setReviewMsg(null);
+        try {
+            const res = await fetch("/api/reviews", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ productId: product.id, ...reviewForm }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setReviews(prev => [data.review, ...prev]);
+                setReviewForm({ rating: 5, comment: "", date: new Date().toISOString().substring(0, 10) });
+                setReviewMsg({ type: "success", text: "Review saved!" });
+            } else throw new Error(data.error);
+        } catch (err) {
+            setReviewMsg({ type: "error", text: err.message });
+        } finally {
+            setSavingReview(false);
+            setTimeout(() => setReviewMsg(null), 3000);
+        }
+    };
+
+    const handleDeleteReview = async (id) => {
+        await fetch(`/api/reviews?id=${id}`, { method: "DELETE" });
+        setReviews(prev => prev.filter(r => r.id !== id));
+    };
+
+    const totalRevenue = sales.reduce((s, d) => s + d.revenue, 0);
+    const totalUnits = sales.reduce((s, d) => s + d.unitsSold, 0);
+    const avgRating = reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : null;
+
+    return (
+        <Portal>
+            <AnimatePresence>
+                {product && (
+                    <>
+                        {/* Backdrop */}
+                        <motion.div
+                            key="backdrop"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={onClose}
+                            className="fixed inset-0 z-[200] bg-background/60 backdrop-blur-sm"
+                        />
+                        {/* Sheet */}
+                        <motion.div
+                            key="sheet"
+                            initial={{ x: "100%" }}
+                            animate={{ x: 0 }}
+                            exit={{ x: "100%" }}
+                            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                            className="fixed right-0 top-0 bottom-0 z-[201] w-full max-w-md bg-card border-l border-border shadow-2xl flex flex-col overflow-hidden"
+                        >
+                            {/* Header */}
+                            <div className="p-6 border-b border-border flex items-start justify-between gap-4">
+                                <div className="min-w-0">
+                                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-muted-foreground mb-1">Product Detail</p>
+                                    <h2 className="text-lg font-black tracking-tighter italic truncate">{product.name}</h2>
+                                    <p className="text-[10px] text-muted-foreground font-bold mt-0.5">{product.category} · ₹{product.price?.toLocaleString()} · {product.stock} units</p>
+                                </div>
+                                <button onClick={onClose} className="p-2 rounded-xl hover:bg-accent transition-all flex-shrink-0">
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
+
+                            {/* KPI row */}
+                            <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
+                                <div className="p-4 text-center">
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground mb-1">Revenue</p>
+                                    <p className="text-base font-black text-emerald-500">₹{totalRevenue.toLocaleString()}</p>
+                                </div>
+                                <div className="p-4 text-center">
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground mb-1">Units Sold</p>
+                                    <p className="text-base font-black">{totalUnits}</p>
+                                </div>
+                                <div className="p-4 text-center">
+                                    <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground mb-1">Avg Rating</p>
+                                    <p className="text-base font-black text-amber-500">{avgRating ? `${avgRating}/5` : "—"}</p>
+                                </div>
+                            </div>
+
+                            {/* Tabs */}
+                            <div className="flex border-b border-border">
+                                {[{ id: "sales", label: "Sales", icon: TrendingUp }, { id: "reviews", label: "Reviews", icon: Star }].map(t => (
+                                    <button
+                                        key={t.id}
+                                        onClick={() => setTab(t.id)}
+                                        className={cn(
+                                            "flex-1 flex items-center justify-center gap-2 px-4 py-3 text-[10px] font-black uppercase tracking-widest transition-all",
+                                            tab === t.id ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        <t.icon className="h-3.5 w-3.5" />{t.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Tab Content */}
+                            <div className="flex-1 overflow-y-auto">
+                                {tab === "sales" && (
+                                    <div className="p-5 space-y-5">
+                                        {/* Add Sale Form */}
+                                        <form onSubmit={handleAddSale} className="space-y-3 bg-secondary/50 rounded-2xl p-4 border border-border">
+                                            <p className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground flex items-center gap-2">
+                                                <BarChart2 className="h-3 w-3" /> Add Sales Record
+                                            </p>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <div>
+                                                    <label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Units Sold *</label>
+                                                    <input
+                                                        type="number" min="1" required
+                                                        placeholder="e.g. 5"
+                                                        value={saleForm.unitsSold}
+                                                        onChange={e => setSaleForm(f => ({ ...f, unitsSold: e.target.value }))}
+                                                        className="w-full mt-1 px-3 py-2 rounded-xl bg-background border border-border text-sm font-bold focus:outline-none focus:border-primary transition-all"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Revenue (₹) *</label>
+                                                    <input
+                                                        type="number" min="0" step="0.01" required
+                                                        placeholder="e.g. 1750"
+                                                        value={saleForm.revenue}
+                                                        onChange={e => setSaleForm(f => ({ ...f, revenue: e.target.value }))}
+                                                        className="w-full mt-1 px-3 py-2 rounded-xl bg-background border border-border text-sm font-bold focus:outline-none focus:border-primary transition-all"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Date</label>
+                                                <input
+                                                    type="date"
+                                                    value={saleForm.date}
+                                                    onChange={e => setSaleForm(f => ({ ...f, date: e.target.value }))}
+                                                    className="w-full mt-1 px-3 py-2 rounded-xl bg-background border border-border text-sm font-bold focus:outline-none focus:border-primary transition-all"
+                                                />
+                                            </div>
+                                            {saleMsg && (
+                                                <p className={cn("text-[10px] font-black", saleMsg.type === "success" ? "text-emerald-500" : "text-destructive")}>{saleMsg.text}</p>
+                                            )}
+                                            <button type="submit" disabled={savingSale} className="w-full py-2.5 rounded-xl bg-foreground text-background text-[10px] font-black uppercase tracking-widest hover:opacity-80 transition-all disabled:opacity-50">
+                                                {savingSale ? "Saving..." : "Save Sales Entry"}
+                                            </button>
+                                        </form>
+
+                                        {/* Sales History */}
+                                        <div className="space-y-2">
+                                            <p className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground">History ({sales.length} entries)</p>
+                                            {salesLoading ? (
+                                                <div className="h-16 flex items-center justify-center opacity-30"><Loader2 className="h-5 w-5 animate-spin" /></div>
+                                            ) : sales.length === 0 ? (
+                                                <div className="py-8 text-center opacity-30">
+                                                    <p className="text-[9px] font-black uppercase tracking-widest">No sales recorded yet</p>
+                                                </div>
+                                            ) : sales.map(s => (
+                                                <div key={s.id} className="flex items-center justify-between p-3 rounded-xl bg-secondary border border-border group">
+                                                    <div>
+                                                        <p className="text-xs font-black">{s.unitsSold} units · ₹{s.revenue?.toLocaleString()}</p>
+                                                        <p className="text-[8px] text-muted-foreground font-bold">{new Date(s.date).toLocaleDateString("en-IN")}</p>
+                                                    </div>
+                                                    <button onClick={() => handleDeleteSale(s.id)} className="p-1.5 rounded-lg text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all">
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {tab === "reviews" && (
+                                    <div className="p-5 space-y-5">
+                                        {/* Add Review Form */}
+                                        <form onSubmit={handleAddReview} className="space-y-3 bg-secondary/50 rounded-2xl p-4 border border-border">
+                                            <p className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground flex items-center gap-2">
+                                                <MessageSquare className="h-3 w-3" /> Add Customer Review
+                                            </p>
+                                            <div>
+                                                <label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Rating (1–5) *</label>
+                                                <div className="flex gap-1 mt-2">
+                                                    {[1, 2, 3, 4, 5].map(n => (
+                                                        <button
+                                                            key={n} type="button"
+                                                            onClick={() => setReviewForm(f => ({ ...f, rating: n }))}
+                                                            className="p-1"
+                                                        >
+                                                            <Star className={cn("h-5 w-5", n <= reviewForm.rating ? "text-amber-400 fill-amber-400" : "text-border")} />
+                                                        </button>
+                                                    ))}
+                                                    <span className="ml-2 text-sm font-black self-center">{reviewForm.rating}/5</span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Comment (optional)</label>
+                                                <textarea
+                                                    rows={3}
+                                                    placeholder="Customer feedback..."
+                                                    value={reviewForm.comment}
+                                                    onChange={e => setReviewForm(f => ({ ...f, comment: e.target.value }))}
+                                                    className="w-full mt-1 px-3 py-2 rounded-xl bg-background border border-border text-sm font-bold focus:outline-none focus:border-primary transition-all resize-none"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-[8px] font-black uppercase tracking-widest text-muted-foreground">Date</label>
+                                                <input
+                                                    type="date"
+                                                    value={reviewForm.date}
+                                                    onChange={e => setReviewForm(f => ({ ...f, date: e.target.value }))}
+                                                    className="w-full mt-1 px-3 py-2 rounded-xl bg-background border border-border text-sm font-bold focus:outline-none focus:border-primary transition-all"
+                                                />
+                                            </div>
+                                            {reviewMsg && (
+                                                <p className={cn("text-[10px] font-black", reviewMsg.type === "success" ? "text-emerald-500" : "text-destructive")}>{reviewMsg.text}</p>
+                                            )}
+                                            <button type="submit" disabled={savingReview} className="w-full py-2.5 rounded-xl bg-foreground text-background text-[10px] font-black uppercase tracking-widest hover:opacity-80 transition-all disabled:opacity-50">
+                                                {savingReview ? "Saving..." : "Save Review"}
+                                            </button>
+                                        </form>
+
+                                        {/* Reviews list */}
+                                        <div className="space-y-2">
+                                            <p className="text-[9px] font-black uppercase tracking-[0.25em] text-muted-foreground">Reviews ({reviews.length})</p>
+                                            {reviewsLoading ? (
+                                                <div className="h-16 flex items-center justify-center opacity-30"><Loader2 className="h-5 w-5 animate-spin" /></div>
+                                            ) : reviews.length === 0 ? (
+                                                <div className="py-8 text-center opacity-30">
+                                                    <p className="text-[9px] font-black uppercase tracking-widest">No reviews yet</p>
+                                                </div>
+                                            ) : reviews.map(r => (
+                                                <div key={r.id} className="p-3 rounded-xl bg-secondary border border-border group space-y-1">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex gap-0.5">
+                                                            {[1, 2, 3, 4, 5].map(n => (
+                                                                <Star key={n} className={cn("h-3 w-3", n <= r.rating ? "text-amber-400 fill-amber-400" : "text-border")} />
+                                                            ))}
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-[8px] text-muted-foreground font-bold">{new Date(r.date).toLocaleDateString("en-IN")}</span>
+                                                            <button onClick={() => handleDeleteReview(r.id)} className="p-1 rounded text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-all">
+                                                                <Trash2 className="h-3 w-3" />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    {r.comment && <p className="text-xs text-muted-foreground font-medium leading-relaxed">{r.comment}</p>}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
+        </Portal>
+    );
+}
 
 export default function CatalogPage() {
     const { status } = useSession();
@@ -100,13 +477,15 @@ export default function CatalogPage() {
     const [sortOrder, setSortOrder] = useState("desc");
     const [page, setPage] = useState(1);
     const [pagination, setPagination] = useState({ totalPages: 1, totalItems: 0 });
+    const [selectedProduct, setSelectedProduct] = useState(null); // for detail sheet
 
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isOcrModalOpen, setIsOcrModalOpen] = useState(false);
+    // Bulk Import Specific State
+    const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isScanning, setIsScanning] = useState(false);
     const [error, setError] = useState(null);
     const [success, setSuccess] = useState(false);
+    const [preview3DProduct, setPreview3DProduct] = useState(null);
 
     // OCR Specific State
     const [ocrResults, setOcrResults] = useState([]);
@@ -165,6 +544,15 @@ export default function CatalogPage() {
     }, [page, search, category, sortBy, sortOrder, status, router]);
 
     useEffect(() => {
+        const handleOpen3D = (e) => {
+            console.log("🎯 3D Preview Event Caught:", e.detail);
+            setPreview3DProduct(e.detail);
+        };
+        window.addEventListener('open-3d-preview', handleOpen3D);
+        return () => window.removeEventListener('open-3d-preview', handleOpen3D);
+    }, []);
+
+    useEffect(() => {
         if (status === "unauthenticated") {
             router.push("/login");
         } else if (status === "authenticated") {
@@ -182,75 +570,6 @@ export default function CatalogPage() {
     if (status === "loading") {
         return <div className="min-h-screen flex items-center justify-center font-black uppercase tracking-widest opacity-20">Accessing_Catalog_Node...</div>;
     }
-
-    const handleOcrScan = async (file) => {
-        if (!file) return;
-        setIsScanning(true);
-        setError(null);
-        setOcrResults([]);
-
-        const formData = new FormData();
-        formData.append("file", file);
-
-        try {
-            const res = await fetchWithRetry("/api/products/ocr", {
-                method: "POST",
-                body: formData,
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                setOcrResults(data.products.map(p => ({
-                    ...p,
-                    price: p.price || 0,
-                    stock: p.stock || 0,
-                    cost: p.cost || (parseFloat(p.price || 0) * 0.7),
-                    id: Math.random().toString(36).substr(2, 9)
-                })));
-            } else {
-                const data = await res.json();
-                throw new Error(data.error || "OCR Scan failed");
-            }
-        } catch (err) {
-            setError(err.message);
-        } finally {
-            setIsScanning(false);
-        }
-    };
-
-    const handleCommitOcr = async () => {
-        setIsSubmitting(true);
-        try {
-            const promises = ocrResults.map(p =>
-                fetchWithRetry("/api/products", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(p),
-                })
-            );
-
-            await Promise.all(promises);
-            fetchProducts();
-
-            confetti({
-                particleCount: 150,
-                spread: 70,
-                origin: { y: 0.6 },
-                colors: ['#6366f1', '#818cf8', '#ffffff']
-            });
-
-            setSuccess(true);
-            setTimeout(() => {
-                setIsOcrModalOpen(false);
-                setOcrResults([]);
-                setSuccess(false);
-            }, 3000);
-        } catch (err) {
-            setError("Bulk commit failed.");
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -332,7 +651,7 @@ export default function CatalogPage() {
                         </button>
 
                         <button
-                            onClick={() => setIsOcrModalOpen(true)}
+                            onClick={() => setIsBulkImportOpen(true)}
                             className="group relative flex items-center gap-3 px-6 py-4 bg-secondary text-foreground border border-border rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:bg-accent hover:border-primary/30"
                         >
                             <Scan className="h-4 w-4 text-primary" />
@@ -426,7 +745,7 @@ export default function CatalogPage() {
                 >
                     <AnimatePresence mode="popLayout">
                         {products.map((product) => (
-                            <ProductCard key={product.id} product={product} />
+                            <ProductCard key={product.id} product={product} onSelect={setSelectedProduct} />
                         ))}
                     </AnimatePresence>
                 </motion.div>
@@ -459,171 +778,91 @@ export default function CatalogPage() {
                 </div>
             )}
 
-            {/* AI OCR Scanner Modal */}
+
+            {/* 3D Preview Matrix Modal */}
             <AnimatePresence>
-                {isOcrModalOpen && (
+                {preview3DProduct && (
                     <Portal>
-                        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6 sm:p-12">
+                        <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 sm:p-12">
                             <motion.div
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
-                                onClick={() => !isScanning && !isSubmitting && setIsOcrModalOpen(false)}
-                                className="absolute inset-0 bg-background/80 backdrop-blur-xl"
+                                onClick={() => setPreview3DProduct(null)}
+                                className="absolute inset-0 bg-background/90 backdrop-blur-2xl"
                             />
 
                             <motion.div
-                                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                                initial={{ opacity: 0, scale: 0.9, y: 40 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                                className="relative w-full max-w-4xl bg-card border border-border rounded-[3.5rem] shadow-[0_32px_128px_-16px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col max-h-[90vh]"
+                                exit={{ opacity: 0, scale: 0.9, y: 40 }}
+                                className="relative w-full max-w-5xl h-[80vh] bg-card border border-border rounded-[4rem] shadow-2xl overflow-hidden flex flex-col sm:flex-row"
                             >
-                                <div className="p-10 border-b border-border flex items-center justify-between bg-card z-20">
-                                    <div className="space-y-1">
-                                        <h2 className="text-xs font-black uppercase tracking-[0.4em] text-foreground flex items-center gap-3">
-                                            <Sparkles className="h-4 w-4 text-primary" /> AI_Vision_Matrix
-                                        </h2>
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest italic font-serif">Gemini Powered Data Extraction v7.0</p>
+                                {/* Left Side: 3D Control Center */}
+                                <div className="p-12 w-full sm:w-1/3 border-b sm:border-b-0 sm:border-r border-border flex flex-col justify-between bg-secondary/10">
+                                    <div className="space-y-8">
+                                        <div className="space-y-2">
+                                            <div className="inline-flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-full">
+                                                <Sparkles className="h-3 w-3 text-primary" />
+                                                <span className="text-[9px] font-bold uppercase tracking-widest text-primary">Spatial_Intelligence_Active</span>
+                                            </div>
+                                            <h2 className="text-4xl font-black italic tracking-tighter leading-none">{preview3DProduct.name}</h2>
+                                            <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">{preview3DProduct.category}</p>
+                                        </div>
+
+                                        <div className="space-y-6">
+                                            <div className="space-y-1">
+                                                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">Product_Identity</p>
+                                                <p className="text-sm font-black font-mono opacity-40">{preview3DProduct.id}</p>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="p-4 rounded-3xl bg-background border border-border">
+                                                    <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Stock</p>
+                                                    <p className="text-xl font-black italic">{preview3DProduct.stock}</p>
+                                                </div>
+                                                <div className="p-4 rounded-3xl bg-background border border-border">
+                                                    <p className="text-[9px] font-black text-muted-foreground uppercase mb-1">Price</p>
+                                                    <p className="text-xl font-black italic">₹{preview3DProduct.price}</p>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
+
+                                    <div className="space-y-4">
+                                        <div className="p-6 rounded-3xl bg-primary text-primary-foreground">
+                                            <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-2">AR Stability</p>
+                                            <div className="flex items-center gap-4">
+                                                <div className="h-1 flex-grow bg-white/20 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-white w-[92%]" />
+                                                </div>
+                                                <span className="text-xs font-black">92%</span>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={() => setPreview3DProduct(null)}
+                                            className="w-full p-5 rounded-3xl bg-secondary border border-border font-black text-[10px] uppercase tracking-widest hover:bg-muted transition-all"
+                                        >
+                                            Deactivate View
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Right Side: The Matrix (Model) */}
+                                <div className="relative flex-grow h-full bg-background grayscale-[0.2] hover:grayscale-0 transition-all duration-700">
+                                    <ModelViewer
+                                        src="https://modelviewer.dev/shared-assets/models/Astronaut.glb"
+                                        alt={preview3DProduct.name}
+                                        className="w-full h-full"
+                                    />
+
                                     <button
-                                        onClick={() => setIsOcrModalOpen(false)}
-                                        className="p-3 rounded-full hover:bg-secondary transition-colors text-muted-foreground hover:text-foreground"
+                                        onClick={() => setPreview3DProduct(null)}
+                                        className="absolute top-8 right-8 p-4 rounded-full bg-background/50 backdrop-blur-md border border-border hover:bg-background transition-all z-30"
                                     >
                                         <X className="h-5 w-5" />
                                     </button>
-                                </div>
-
-                                <div className="flex-grow overflow-y-auto p-10 space-y-8 custom-scrollbar">
-                                    {ocrResults.length === 0 ? (
-                                        <div
-                                            onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
-                                            onDragLeave={() => setDragActive(false)}
-                                            onDrop={(e) => {
-                                                e.preventDefault();
-                                                setDragActive(false);
-                                                if (e.dataTransfer.files[0]) handleOcrScan(e.dataTransfer.files[0]);
-                                            }}
-                                            className={cn(
-                                                "h-[350px] border-2 border-dashed rounded-[2.5rem] flex flex-col items-center justify-center space-y-6 transition-all",
-                                                dragActive ? "border-primary bg-primary/5 scale-[0.98]" : "border-border bg-secondary/20",
-                                                isScanning ? "pointer-events-none" : "hover:bg-secondary/40 hover:border-primary/30"
-                                            )}
-                                        >
-                                            {isScanning ? (
-                                                <div className="flex flex-col items-center gap-6">
-                                                    <div className="relative w-20 h-20">
-                                                        <motion.div
-                                                            animate={{ rotate: 360 }}
-                                                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-                                                            className="absolute inset-0 rounded-full border-2 border-primary/20 border-t-primary"
-                                                        />
-                                                        <Scan className="absolute inset-0 m-auto h-8 w-8 text-primary animate-pulse" />
-                                                    </div>
-                                                    <div className="space-y-2 text-center">
-                                                        <p className="text-[10px] font-black uppercase tracking-[0.5em] text-primary animate-pulse">Scanning_Image_Layers...</p>
-                                                        <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Synthesizing_Multimodal_Data</p>
-                                                    </div>
-                                                </div>
-                                            ) : (
-                                                <>
-                                                    <div className="h-20 w-20 rounded-full bg-secondary flex items-center justify-center">
-                                                        <Upload className="h-8 w-8 text-muted-foreground" />
-                                                    </div>
-                                                    <div className="space-y-2 text-center">
-                                                        <p className="text-foreground font-black uppercase tracking-[0.3em] text-sm italic underline">Input_Required</p>
-                                                        <p className="text-muted-foreground font-bold text-xs uppercase tracking-widest">Drop screenshot, PDF catalog or product sheet</p>
-                                                    </div>
-                                                    <input
-                                                        type="file"
-                                                        accept="image/*,.pdf,.xlsx,.xls"
-                                                        id="ocr-upload"
-                                                        className="hidden"
-                                                        onChange={(e) => e.target.files[0] && handleOcrScan(e.target.files[0])}
-                                                    />
-                                                    <label
-                                                        htmlFor="ocr-upload"
-                                                        className="px-8 py-3 bg-foreground text-background rounded-xl font-black text-[10px] uppercase tracking-[0.2em] cursor-pointer hover:scale-105 transition-transform"
-                                                    >
-                                                        Browse Files
-                                                    </label>
-                                                </>
-                                            )}
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-6">
-                                            <div className="p-6 rounded-3xl bg-secondary/50 border border-border">
-                                                <div className="flex items-center justify-between mb-8">
-                                                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Assets Identified: {ocrResults.length}</span>
-                                                    <button
-                                                        onClick={() => setOcrResults([])}
-                                                        className="text-[9px] font-black uppercase tracking-widest text-destructive hover:underline"
-                                                    >
-                                                        Clear Buffer
-                                                    </button>
-                                                </div>
-
-                                                <div className="overflow-hidden rounded-2xl border border-border">
-                                                    <table className="w-full text-left border-collapse">
-                                                        <thead>
-                                                            <tr className="bg-background border-b border-border">
-                                                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Identity</th>
-                                                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Sector</th>
-                                                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground text-right">Valuation</th>
-                                                                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-widest text-muted-foreground text-right">Qty</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y divide-border/50">
-                                                            {ocrResults.map((p, idx) => (
-                                                                <tr key={idx} className="bg-card hover:bg-secondary/20 transition-colors">
-                                                                    <td className="px-6 py-4 text-xs font-bold">{p.name}</td>
-                                                                    <td className="px-6 py-4">
-                                                                        <span className="px-2 py-0.5 rounded-md bg-secondary text-[9px] font-black uppercase tracking-widest">{p.category || "General"}</span>
-                                                                    </td>
-                                                                    <td className="px-6 py-4 text-right font-mono text-xs">₹{p.price.toLocaleString()}</td>
-                                                                    <td className="px-6 py-4 text-right font-black italic text-xs">{p.stock}</td>
-                                                                </tr>
-                                                            ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            </div>
-
-                                            {success ? (
-                                                <motion.div
-                                                    initial={{ opacity: 0, scale: 0.9 }}
-                                                    animate={{ opacity: 1, scale: 1 }}
-                                                    className="p-8 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col items-center justify-center text-center gap-4 py-20"
-                                                >
-                                                    <CheckCircle2 className="h-12 w-12 text-emerald-500" />
-                                                    <div className="space-y-1">
-                                                        <p className="text-emerald-500 font-black uppercase tracking-[0.3em] text-sm">Batch_Commit_Success</p>
-                                                        <p className="text-emerald-500/60 font-medium text-xs">All extracted assets have been merged with global catalog.</p>
-                                                    </div>
-                                                </motion.div>
-                                            ) : (
-                                                <div className="flex items-center justify-between p-8 rounded-3xl bg-foreground text-background">
-                                                    <div className="space-y-1">
-                                                        <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Ready to Merge</p>
-                                                        <p className="text-sm font-black italic uppercase tracking-tighter">Commit {ocrResults.length} Units to Data-Lake?</p>
-                                                    </div>
-                                                    <button
-                                                        onClick={handleCommitOcr}
-                                                        disabled={isSubmitting}
-                                                        className="flex items-center gap-3 px-10 py-4 bg-background text-foreground rounded-2xl font-black text-[12px] uppercase tracking-[0.2em] hover:scale-105 active:scale-95 transition-all disabled:opacity-50"
-                                                    >
-                                                        {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-5 w-5" />}
-                                                        Finalize Merge
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {error && (
-                                        <div className="p-5 rounded-2xl bg-destructive/10 border border-destructive/20 text-destructive text-[10px] font-black uppercase tracking-widest flex items-center gap-3">
-                                            <AlertCircle className="h-4 w-4" /> Error: {error}
-                                        </div>
-                                    )}
                                 </div>
                             </motion.div>
                         </div>
@@ -682,6 +921,18 @@ export default function CatalogPage() {
                     padding-bottom: 8px;
                 }
             `}</style>
+
+            {/* Product Detail Sheet */}
+            <ProductDetailSheet
+                product={selectedProduct}
+                onClose={() => setSelectedProduct(null)}
+            />
+            {/* Bulk Import Modal */}
+            <BulkImportModal
+                isOpen={isBulkImportOpen}
+                onClose={() => setIsBulkImportOpen(false)}
+                onComplete={() => fetchProducts()}
+            />
         </div>
     );
 }

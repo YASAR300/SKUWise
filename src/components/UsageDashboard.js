@@ -139,7 +139,7 @@ export default function UsageDashboard({ data, isLoading }) {
                         </div>
                         <h4 className="font-black text-[10px] uppercase tracking-[0.2em] text-primary mb-2">Neural Recommendation</h4>
                         <p className="text-sm font-medium leading-relaxed italic">
-                            "Switching to Flash 2.0 for all inventory summaries could save you approximately $4.20 over the next 10,000 queries."
+                            &quot;Switching to Flash 2.0 for all inventory summaries could save you approximately $4.20 over the next 10,000 queries.&quot;
                         </p>
                     </div>
                 </div>

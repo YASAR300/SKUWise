@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
     BarChart3,
     TrendingDown,
@@ -37,7 +37,7 @@ export default function AnalysisPage() {
     const [selectedAsset, setSelectedAsset] = useState(null);
     const [availableCategories, setAvailableCategories] = useState(["all"]);
 
-    const fetchAnalysis = async (signal) => {
+    const fetchAnalysis = useCallback(async (signal) => {
         setLoading(true);
         try {
             const res = await fetchWithRetry(`/api/analysis?category=${category}`, { signal });
@@ -56,7 +56,7 @@ export default function AnalysisPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [category, router]);
 
     useEffect(() => {
         if (status === "unauthenticated") {
@@ -66,7 +66,7 @@ export default function AnalysisPage() {
             fetchAnalysis(controller.signal);
             return () => controller.abort();
         }
-    }, [category, status, router]);
+    }, [fetchAnalysis, status, router]);
 
     if (status === "loading") {
         return (

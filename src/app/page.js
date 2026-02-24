@@ -68,7 +68,7 @@ export default function Home() {
     if (status === "unauthenticated") {
       router.push("/login");
     }
-  }, [status]);
+  }, [status, router]);
 
   // Close menu when clicking outside
   useEffect(() => {
